@@ -108,6 +108,7 @@ function calculateInvestmentGrowth(monthlyInvestment, annualReturn, months) {
     
     return {
         finalBalance: balance,
+        totalValue: balance,
         totalContributions: monthlyInvestment * months,
         totalGains: balance - (monthlyInvestment * months),
         schedule
@@ -133,8 +134,9 @@ function calculateHybridStrategy(acceleratedPayoff, extraPayment, standardTotalM
     const monthlyPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
                      (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
     
-    // After payoff, invest P&I + extra principal + 75% of remaining payment (freed cash flow)
-    const totalMonthlyInvestment = monthlyPI + extraPayment + (currentPayment - monthlyPI) * 0.75;
+    // After payoff, invest 75% of total payment + extra principal (simplified approach)
+    const estimatedPI = currentPayment * 0.75;
+    const totalMonthlyInvestment = estimatedPI + extraPayment;
     
     let investmentBalance = 0;
     if (remainingMonths > 0) {
@@ -201,7 +203,7 @@ function calculate() {
     const standardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0);
     const acceleratedPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, extraPrincipal);
     
-    // Calculate investment scenarios
+    // Calculate investment scenarios (invest extra principal for FULL standard mortgage term)
     const weakInvestment = calculateInvestmentGrowth(extraPrincipal, 4, standardPayoff.monthsToPayoff);
     const averageInvestment = calculateInvestmentGrowth(extraPrincipal, 7, standardPayoff.monthsToPayoff);
     const strongInvestment = calculateInvestmentGrowth(extraPrincipal, 10, standardPayoff.monthsToPayoff);
@@ -218,7 +220,7 @@ function calculate() {
     updateComparisonTable(standardPayoff, acceleratedPayoff, extraPrincipal);
     
     // Update tax information
-    updateTaxInfo(hybridWeak, hybridAverage, hybridStrong, taxRate);
+    updateTaxInfo(weakInvestment, averageInvestment, strongInvestment, taxRate, standardPayoff.monthsToPayoff);
     
     // Create charts
     createBalanceChart(standardPayoff, acceleratedPayoff);
@@ -237,6 +239,7 @@ function calculate() {
 function updateSummaryCards(standard, accelerated, weak, average, strong, hybridWeak, hybridAverage, hybridStrong) {
     const timeSaved = standard.monthsToPayoff - accelerated.monthsToPayoff;
     const interestSaved = standard.totalInterest - accelerated.totalInterest;
+    const taxRate = parseFloat(document.getElementById('taxRate').value);
     
     document.getElementById('timeSaved').textContent = formatTime(timeSaved);
     document.getElementById('interestSaved').textContent = formatCurrency(interestSaved);
@@ -247,10 +250,22 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
     document.getElementById('averageReturn').textContent = formatCurrency(hybridAverage.totalBenefit);
     document.getElementById('strongReturn').textContent = formatCurrency(hybridStrong.totalBenefit);
     
-    // Show pure investment strategy results (invest extra principal only)
-    document.getElementById('pureWeakReturn').textContent = formatCurrency(weak.totalGains);
-    document.getElementById('pureAverageReturn').textContent = formatCurrency(average.totalGains);
-    document.getElementById('pureStrongReturn').textContent = formatCurrency(strong.totalGains);
+    // Calculate after-tax gains for pure investment strategy
+    const pureInvestmentScenarios = [
+        { data: weak, id: 'pureWeakReturn' },
+        { data: average, id: 'pureAverageReturn' },
+        { data: strong, id: 'pureStrongReturn' }
+    ];
+    
+    pureInvestmentScenarios.forEach(scenario => {
+        // Calculate capital gains tax on investment gains
+        const investmentGains = scenario.data.totalGains;
+        const tax = investmentGains * (taxRate / 100);
+        const afterTaxGains = investmentGains - tax;
+        const totalAfterTaxValue = scenario.data.totalContributions + afterTaxGains;
+        
+        document.getElementById(scenario.id).textContent = formatCurrency(totalAfterTaxValue);
+    });
 }
 
 function updateComparisonTable(standard, accelerated, extraPrincipal) {
@@ -293,22 +308,23 @@ function updateComparisonTable(standard, accelerated, extraPrincipal) {
     document.getElementById('termReduction').textContent = '-' + formatTime(timeSaved);
 }
 
-function updateTaxInfo(hybridWeak, hybridAverage, hybridStrong, taxRate) {
+function updateTaxInfo(pureWeak, pureAverage, pureStrong, taxRate, totalMonths) {
+    // Update the section title with investment duration
+    const investmentYears = Math.round(totalMonths / 12);
+    const taxSectionTitle = document.querySelector('.tax-info h3');
+    taxSectionTitle.textContent = `💸 Tax Implications: Pure Investment Strategy (${investmentYears} years)`;
+    
     const scenarios = [
-        { prefix: 'weak', data: hybridWeak },
-        { prefix: 'average', data: hybridAverage },
-        { prefix: 'strong', data: hybridStrong }
+        { prefix: 'weak', data: pureWeak },
+        { prefix: 'average', data: pureAverage },
+        { prefix: 'strong', data: pureStrong }
     ];
     
     scenarios.forEach(scenario => {
-        // Only the investment portion is subject to capital gains tax
-        const investmentGains = scenario.data.investmentBalance > 0 ? 
-            scenario.data.investmentBalance - (scenario.data.totalMonthlyInvestment * scenario.data.remainingMonths) : 0;
+        // Pure investment strategy: all gains are subject to capital gains tax
+        const investmentGains = scenario.data.totalGains;
         const tax = investmentGains * (taxRate / 100);
         const afterTaxInvestmentGains = investmentGains - tax;
-        
-        // Total after-tax benefit = interest saved (not taxed) + after-tax investment gains
-        const totalAfterTaxBenefit = scenario.data.interestSaved + scenario.data.investmentBalance - tax;
         
         document.getElementById(`${scenario.prefix}PreTax`).textContent = formatCurrency(investmentGains);
         document.getElementById(`${scenario.prefix}Tax`).textContent = formatCurrency(tax);
@@ -717,6 +733,17 @@ function createComparisonChart(payoff, weak, average, strong) {
     const monthlyPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
                      (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
     
+    // Calculate total monthly investment amount (75% of total payment + extra principal)
+    const estimatedPI = currentPayment * 0.75;
+    const totalMonthlyInvestment = estimatedPI + extraPrincipal;
+    
+    // Update the chart title with investment details
+    const chartTitle = document.querySelector('#comparisonChart').closest('.chart-container').querySelector('h3');
+    chartTitle.innerHTML = `💰 Hybrid Strategy: Investment After Payoff`;
+    
+    const chartSubtitle = document.querySelector('#comparisonChart').closest('.chart-container').querySelector('.chart-subtitle');
+    chartSubtitle.innerHTML = `Monthly Investment: ${formatCurrency(totalMonthlyInvestment)} (75% of Payment: ${formatCurrency(estimatedPI)} + Extra Principal: ${formatCurrency(extraPrincipal)})`;
+    
     // Create date labels starting from payoff completion date
     const currentDate = new Date();
     const payoffDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + payoff.monthsToPayoff, 1);
@@ -735,19 +762,18 @@ function createComparisonChart(payoff, weak, average, strong) {
     const hybridStrongLine = [];
     
     for (let month = 1; month <= investmentTimelineMonths; month++) {
-        // After payoff, invest the freed cash flow
-        const currentPayment = parseFloat(document.getElementById('currentPayment').value);
-        const totalMonthlyInvestment = monthlyPI + extraPrincipal + (currentPayment - monthlyPI) * 0.75;
+        // After payoff, invest the freed cash flow (P&I + extra principal only)
+        // Note: totalMonthlyInvestment is already calculated above
         
         // Calculate investment growth starting from zero
         const weakGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 4, month);
         const avgGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 7, month);
         const strongGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 10, month);
         
-        // Show only investment gains (not including interest savings)
-        hybridWeakLine.push(weakGrowth.totalGains);
-        hybridAverageLine.push(avgGrowth.totalGains);
-        hybridStrongLine.push(strongGrowth.totalGains);
+        // Show total investment value (principal invested + gains)
+        hybridWeakLine.push(weakGrowth.totalValue);
+        hybridAverageLine.push(avgGrowth.totalValue);
+        hybridStrongLine.push(strongGrowth.totalValue);
     }
     
     comparisonChart = new Chart(ctx, {
@@ -756,7 +782,7 @@ function createComparisonChart(payoff, weak, average, strong) {
             labels: dateLabels,
             datasets: [
                 {
-                    label: '🐻 Investment Growth After Payoff (Weak 4%)',
+                    label: '🐻 Total Investment Value (Weak 4%)',
                     data: hybridWeakLine,
                     borderColor: '#f59e0b',
                     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -765,7 +791,7 @@ function createComparisonChart(payoff, weak, average, strong) {
                     tension: 0.1
                 },
                 {
-                    label: '📈 Investment Growth After Payoff (Average 7%)',
+                    label: '📈 Total Investment Value (Average 7%)',
                     data: hybridAverageLine,
                     borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -774,7 +800,7 @@ function createComparisonChart(payoff, weak, average, strong) {
                     tension: 0.1
                 },
                 {
-                    label: '🚀 Investment Growth After Payoff (Strong 10%)',
+                    label: '🚀 Total Investment Value (Strong 10%)',
                     data: hybridStrongLine,
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
