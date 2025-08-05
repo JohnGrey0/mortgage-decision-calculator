@@ -219,9 +219,6 @@ function calculate() {
     // Update comparison table
     updateComparisonTable(standardPayoff, acceleratedPayoff, extraPrincipal);
     
-    // Update tax information
-    updateTaxInfo(weakInvestment, averageInvestment, strongInvestment, taxRate, standardPayoff.monthsToPayoff);
-    
     // Create charts
     createBalanceChart(standardPayoff, acceleratedPayoff);
     createStrategyChart(acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment);
@@ -306,30 +303,6 @@ function updateComparisonTable(standard, accelerated, extraPrincipal) {
     document.getElementById('standardTerm').textContent = formatTime(standard.monthsToPayoff);
     document.getElementById('extraTerm').textContent = formatTime(accelerated.monthsToPayoff);
     document.getElementById('termReduction').textContent = '-' + formatTime(timeSaved);
-}
-
-function updateTaxInfo(pureWeak, pureAverage, pureStrong, taxRate, totalMonths) {
-    // Update the section title with investment duration
-    const investmentYears = Math.round(totalMonths / 12);
-    const taxSectionTitle = document.querySelector('.tax-info h3');
-    taxSectionTitle.textContent = `💸 Tax Implications: Pure Investment Strategy (${investmentYears} years)`;
-    
-    const scenarios = [
-        { prefix: 'weak', data: pureWeak },
-        { prefix: 'average', data: pureAverage },
-        { prefix: 'strong', data: pureStrong }
-    ];
-    
-    scenarios.forEach(scenario => {
-        // Pure investment strategy: all gains are subject to capital gains tax
-        const investmentGains = scenario.data.totalGains;
-        const tax = investmentGains * (taxRate / 100);
-        const afterTaxInvestmentGains = investmentGains - tax;
-        
-        document.getElementById(`${scenario.prefix}PreTax`).textContent = formatCurrency(investmentGains);
-        document.getElementById(`${scenario.prefix}Tax`).textContent = formatCurrency(tax);
-        document.getElementById(`${scenario.prefix}AfterTax`).textContent = formatCurrency(afterTaxInvestmentGains);
-    });
 }
 
 function createBalanceChart(standard, accelerated) {

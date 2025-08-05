@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Investment Calculator Debug</title>
+</head>
+<body>
+    <h2>Investment Calculator Debug Test</h2>
+    <div id="output"></div>
+
+    <script>
+        function calculateInvestmentGrowth(monthlyInvestment, annualReturn, months) {
+            const monthlyReturn = annualReturn / 100 / 12;
+            let balance = 0;
+            const schedule = [];
+            
+            for (let month = 1; month <= months; ++month) {
+                balance = balance * (1 + monthlyReturn) + monthlyInvestment;
+                schedule.push({
+                    month,
+                    balance,
+                    totalContributions: monthlyInvestment * month,
+                    gains: balance - (monthlyInvestment * month)
+                });
+            }
+            
+            return {
+                finalBalance: balance,
+                totalValue: balance,
+                totalContributions: monthlyInvestment * months,
+                totalGains: balance - (monthlyInvestment * months),
+                schedule
+            };
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        }
+
+        // Test with sample values
+        const extraPrincipal = 500; // $500 extra per month
+        const months = 180; // 15 years (assuming 15-year early payoff vs 30-year standard)
+        const returnRate = 7; // 7% return
+
+        const result = calculateInvestmentGrowth(extraPrincipal, returnRate, months);
+        
+        const output = document.getElementById('output');
+        output.innerHTML = `
+            <h3>Test Investment Scenario:</h3>
+            <p><strong>Monthly Investment:</strong> ${formatCurrency(extraPrincipal)}</p>
+            <p><strong>Annual Return:</strong> ${returnRate}%</p>
+            <p><strong>Investment Period:</strong> ${months} months (${Math.round(months/12)} years)</p>
+            <hr>
+            <p><strong>Total Contributions:</strong> ${formatCurrency(result.totalContributions)}</p>
+            <p><strong>Final Balance:</strong> ${formatCurrency(result.finalBalance)}</p>
+            <p><strong>Total Gains:</strong> ${formatCurrency(result.totalGains)}</p>
+            <hr>
+            <p><strong>Expected Contributions:</strong> ${formatCurrency(extraPrincipal * months)}</p>
+            <p><strong>Manual Check:</strong> $500 × ${months} = ${formatCurrency(500 * months)}</p>
+            
+            <h4>First few months:</h4>
+            <ul>
+                ${result.schedule.slice(0, 5).map(item => 
+                    `<li>Month ${item.month}: Balance ${formatCurrency(item.balance)}, Contributions ${formatCurrency(item.totalContributions)}, Gains ${formatCurrency(item.gains)}</li>`
+                ).join('')}
+            </ul>
+        `;
+    </script>
+</body>
+</html>
