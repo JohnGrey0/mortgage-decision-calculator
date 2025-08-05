@@ -57,12 +57,22 @@ function calculateMortgagePayoff(principal, rate, term, extraPayment = 0) {
     
     let balance = principal;
     let totalInterest = 0;
+    let totalPaid = 0;
     let month = 0;
     const payoffSchedule = [];
     
     while (balance > 0.01 && month < numberOfPayments * 2) {
         const interestPayment = balance * monthlyRate;
         let principalPayment = monthlyPayment - interestPayment + extraPayment;
+        
+        if (principalPayment > balance) {
+            principalPayment = balance;
+            // For the final payment, only pay what's needed
+            const finalPayment = balance + interestPayment;
+            totalPaid += finalPayment;
+        } else {
+            totalPaid += monthlyPayment + extraPayment;
+        }
         
         if (principalPayment > balance) {
             principalPayment = balance;
@@ -85,7 +95,7 @@ function calculateMortgagePayoff(principal, rate, term, extraPayment = 0) {
     return {
         monthsToPayoff: month,
         totalInterest,
-        totalPaid: principal + totalInterest,
+        totalPaid,
         monthlyPayment,
         schedule: payoffSchedule
     };
@@ -237,10 +247,19 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
     const timeSaved = standard.monthsToPayoff - accelerated.monthsToPayoff;
     const interestSaved = standard.totalInterest - accelerated.totalInterest;
     const taxRate = parseFloat(document.getElementById('taxRate').value);
+    const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value);
+    
+    // Calculate remaining balance and original mortgage amount for complete picture
+    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
+    const originalBalance = parseFloat(document.getElementById('originalBalance').value);
+    const alreadyPaidPrincipal = originalBalance - remainingBalance;
     
     document.getElementById('timeSaved').textContent = formatTime(timeSaved);
     document.getElementById('interestSaved').textContent = formatCurrency(interestSaved);
-    document.getElementById('totalPaid').textContent = formatCurrency(accelerated.totalPaid);
+    
+    // Updated mortgage information for complete picture
+    document.getElementById('totalInterestPaid').textContent = formatCurrency(accelerated.totalInterest);
+    document.getElementById('totalMortgageCost').textContent = formatCurrency(originalBalance + accelerated.totalInterest);
     
     // Show hybrid strategy results (payoff early + invest remaining years)
     document.getElementById('weakReturn').textContent = formatCurrency(hybridWeak.totalBenefit);
