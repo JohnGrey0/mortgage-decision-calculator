@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPVIC</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 Mortgage Payoff vs 📈 Investment Calculator</h1>
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <span class="theme-icon">🌙</span>
+            </button>
+        </header>
+
+        <div class="calculator-section">
+            <div class="input-grid">
+                <div class="input-group">
+                    <h3>💰 Payment Info</h3>
+                    <div class="form-row">
+                        <label for="currentPayment">Current Monthly Payment ($)</label>
+                        <input type="number" id="currentPayment" value="2500" step="10">
+                        <small class="field-note">Includes Principal + Interest + Taxes + Insurance + PMI</small>
+                    </div>
+                    <div class="form-row">
+                        <label for="extraPrincipal">Extra Principal Payment ($)</label>
+                        <input type="number" id="extraPrincipal" value="500" step="50">
+                        <small class="field-note">Additional amount going directly to principal</small>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <h3>🏡 Mortgage Details</h3>
+                    <div class="form-row">
+                        <label for="remainingBalance">Remaining Balance ($)</label>
+                        <input type="number" id="remainingBalance" value="350000" step="1000">
+                        <small class="field-note">Current principal balance owed</small>
+                    </div>
+                    <div class="form-row">
+                        <label for="interestRate">Interest Rate (%)</label>
+                        <input type="number" id="interestRate" value="6.5" step="0.1">
+                        <small class="field-note">Annual interest rate on your loan</small>
+                    </div>
+                    <div class="form-row">
+                        <label for="remainingTerm">Remaining Term (years)</label>
+                        <input type="number" id="remainingTerm" value="25" step="1">
+                        <small class="field-note">Years left on your original loan term</small>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <h3>📊 Investment Options</h3>
+                    <div class="form-row">
+                        <label for="taxRate">Capital Gains Tax Rate (%)</label>
+                        <input type="number" id="taxRate" value="20" step="1">
+                        <small class="field-note">Your marginal capital gains tax rate</small>
+                    </div>
+                    <div class="market-scenarios">
+                        <h4>Market Return Scenarios:</h4>
+                        <div class="scenario-item">
+                            <span class="scenario-label weak">🐻 Weak Market</span>
+                            <span class="scenario-rate">4% annually</span>
+                        </div>
+                        <div class="scenario-item">
+                            <span class="scenario-label average">📈 Average Market</span>
+                            <span class="scenario-rate">7% annually</span>
+                        </div>
+                        <div class="scenario-item">
+                            <span class="scenario-label strong">🚀 Strong Market</span>
+                            <span class="scenario-rate">10% annually</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="calculate-btn" onclick="calculate()">
+                <span>Calculate & Compare</span>
+                <span class="btn-icon">⚡</span>
+            </button>
+        </div>
+
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="summary-cards">
+                <div class="summary-card payoff">
+                    <h3>🏠 Mortgage Payoff Strategy</h3>
+                    <div class="metric">
+                        <span class="label">Time Saved:</span>
+                        <span class="value" id="timeSaved">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Interest Saved:</span>
+                        <span class="value" id="interestSaved">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Total Paid:</span>
+                        <span class="value" id="totalPaid">-</span>
+                    </div>
+                </div>
+
+                <div class="summary-card investment">
+                    <h3>📈 Hybrid Strategy</h3>
+                    <p class="strategy-description">Pay off early + invest payments for remaining term</p>
+                    <div class="investment-scenarios">
+                        <div class="scenario weak">
+                            <span class="scenario-title">🐻 Weak (4%)</span>
+                            <span class="scenario-value" id="weakReturn">-</span>
+                        </div>
+                        <div class="scenario average">
+                            <span class="scenario-title">📈 Average (7%)</span>
+                            <span class="scenario-value" id="averageReturn">-</span>
+                        </div>
+                        <div class="scenario strong">
+                            <span class="scenario-title">🚀 Strong (10%)</span>
+                            <span class="scenario-value" id="strongReturn">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-card pure-investment">
+                    <h3>📊 Pure Investment Strategy</h3>
+                    <p class="strategy-description">Invest extra principal instead of paying down mortgage</p>
+                    <div class="investment-scenarios">
+                        <div class="scenario weak">
+                            <span class="scenario-title">🐻 Weak (4%)</span>
+                            <span class="scenario-value" id="pureWeakReturn">-</span>
+                        </div>
+                        <div class="scenario average">
+                            <span class="scenario-title">📈 Average (7%)</span>
+                            <span class="scenario-value" id="pureAverageReturn">-</span>
+                        </div>
+                        <div class="scenario strong">
+                            <span class="scenario-title">🚀 Strong (10%)</span>
+                            <span class="scenario-value" id="pureStrongReturn">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>📊 Balance Projection Over Time</h3>
+                <canvas id="balanceChart"></canvas>
+            </div>
+
+            <div class="comparison-table">
+                <h3>📋 Mortgage Payment Comparison</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th class="standard-column">🏠 Standard Payment</th>
+                                <th class="extra-column">⚡ With Extra Principal</th>
+                                <th class="savings-column">💰 Savings</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Payoff Date</td>
+                                <td id="standardPayoffDate">-</td>
+                                <td id="extraPayoffDate">-</td>
+                                <td id="timeSavedDetailed">-</td>
+                            </tr>
+                            <tr>
+                                <td>Total Interest Paid</td>
+                                <td id="standardTotalInterest">-</td>
+                                <td id="extraTotalInterest">-</td>
+                                <td id="interestSavedDetailed">-</td>
+                            </tr>
+                            <tr>
+                                <td>Total Amount Paid</td>
+                                <td id="standardTotalPaid">-</td>
+                                <td id="extraTotalPaidDetailed">-</td>
+                                <td id="totalSavedDetailed">-</td>
+                            </tr>
+                            <tr>
+                                <td>Monthly Payment (P&I)</td>
+                                <td id="standardMonthlyPI">-</td>
+                                <td id="extraMonthlyPI">-</td>
+                                <td id="extraPrincipalAmount">-</td>
+                            </tr>
+                            <tr>
+                                <td>Loan Term</td>
+                                <td id="standardTerm">-</td>
+                                <td id="extraTerm">-</td>
+                                <td id="termReduction">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>� Payoff vs Investment Strategy Comparison</h3>
+                <p class="chart-subtitle">Net gains from mortgage payoff vs investing extra principal only</p>
+                <canvas id="strategyChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <h3>�💰 Hybrid Strategy: Payoff + Investment</h3>
+                <p class="chart-subtitle">Interest savings from early payoff + investment growth after mortgage is paid off</p>
+                <canvas id="comparisonChart"></canvas>
+            </div>
+
+            <div class="tax-info">
+                <h3>💸 Tax Implications on Investment Gains</h3>
+                <div class="tax-scenarios">
+                    <div class="tax-scenario">
+                        <h4>🐻 Weak Market (4% return)</h4>
+                        <div class="tax-details">
+                            <span>Pre-tax gains: <span id="weakPreTax">-</span></span>
+                            <span>Tax owed: <span id="weakTax">-</span></span>
+                            <span>After-tax gains: <span id="weakAfterTax">-</span></span>
+                        </div>
+                    </div>
+                    <div class="tax-scenario">
+                        <h4>📈 Average Market (7% return)</h4>
+                        <div class="tax-details">
+                            <span>Pre-tax gains: <span id="averagePreTax">-</span></span>
+                            <span>Tax owed: <span id="averageTax">-</span></span>
+                            <span>After-tax gains: <span id="averageAfterTax">-</span></span>
+                        </div>
+                    </div>
+                    <div class="tax-scenario">
+                        <h4>🚀 Strong Market (10% return)</h4>
+                        <div class="tax-details">
+                            <span>Pre-tax gains: <span id="strongPreTax">-</span></span>
+                            <span>Tax owed: <span id="strongTax">-</span></span>
+                            <span>After-tax gains: <span id="strongAfterTax">-</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
