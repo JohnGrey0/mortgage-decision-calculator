@@ -87,6 +87,7 @@
             <div class="summary-cards">
                 <div class="summary-card payoff">
                     <h3>🏠 Mortgage Payoff Strategy</h3>
+                    <p class="strategy-description">Pay loan off early to show potential savings</p>
                     <div class="metric">
                         <span class="label">Time Saved:</span>
                         <span class="value" id="timeSaved">-</span>
@@ -102,8 +103,8 @@
                 </div>
 
                 <div class="summary-card investment">
-                    <h3>📈 Hybrid Strategy</h3>
-                    <p class="strategy-description">Pay off early + invest payments for remaining term</p>
+                    <h3>📈 Hybrid Investment Strategy</h3>
+                    <p class="strategy-description">Pay loan off early, then invest freed payment amount for remaining loan term</p>
                     <div class="investment-scenarios">
                         <div class="scenario weak">
                             <span class="scenario-title">🐻 Weak (4%)</span>
@@ -122,7 +123,7 @@
 
                 <div class="summary-card pure-investment">
                     <h3>📊 Pure Investment Strategy</h3>
-                    <p class="strategy-description">Invest extra principal for the full loan term instead of paying down mortgage</p>
+                    <p class="strategy-description">Invest extra principal amount for the full standard loan term period</p>
                     <div class="investment-scenarios">
                         <div class="scenario weak">
                             <span class="scenario-title">🐻 Weak (4%)</span>
@@ -194,13 +195,13 @@
             </div>
 
             <div class="chart-container">
-                <h3>� Payoff vs Investment Strategy Comparison</h3>
+                <h3>⚖️ Payoff vs Investment Strategy Comparison</h3>
                 <p class="chart-subtitle">Net gains from mortgage payoff vs investing extra principal only</p>
                 <canvas id="strategyChart"></canvas>
             </div>
 
             <div class="chart-container">
-                <h3>��� Hybrid Strategy: Payoff + Investment</h3>
+                <h3>🎯 Hybrid Strategy: Payoff + Investment</h3>
                 <p class="chart-subtitle">Interest savings from early payoff + investment growth after mortgage is paid off</p>
                 <canvas id="comparisonChart"></canvas>
             </div>

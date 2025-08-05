@@ -318,6 +318,11 @@ header h1 {
 .strategy-description {
     margin: -0.5rem 0 1rem 0;
     font-size: 0.85rem;
+    opacity: 0.9;
+    min-height: 2.4em;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
     opacity: 0.8;
     font-style: italic;
 }
