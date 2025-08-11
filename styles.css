@@ -161,6 +161,59 @@ header h1 {
     line-height: 1.3;
 }
 
+.calculated-field input {
+    background-color: var(--border-color);
+    color: var(--text-secondary);
+    font-style: italic;
+    cursor: not-allowed;
+}
+
+.calculated-field label {
+    color: var(--text-secondary);
+}
+
+.verification-metrics {
+    margin-top: 1rem;
+}
+
+.verification-metrics .metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    background: var(--card-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.verification-metrics .metric .label {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.verification-metrics .metric .value {
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: var(--primary-color);
+    font-size: 0.95rem;
+}
+
+.verification-metrics .metric .value.difference-normal,
+.verification-metrics .metric .value.difference-perfect {
+    color: #22c55e;
+}
+
+.verification-metrics .metric .value.difference-higher,
+.verification-metrics .metric .value.difference-lower {
+    color: #f59e0b;
+}
+
+#piDifference {
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+}
+
 .market-scenarios {
     margin-top: 1rem;
 }
@@ -287,10 +340,42 @@ header h1 {
 .summary-card.pure-investment {
     background: var(--gradient-info);
     color: #1e293b;
+    min-height: 180px; /* Reduced height since tax field was removed */
 }
 
 .summary-card.pure-investment h3 {
     color: #1e293b;
+}
+
+.summary-card.pi-verification {
+    background: var(--gradient-primary);
+    color: white;
+    min-height: 140px;
+}
+
+.summary-card.pi-verification h3 {
+    color: white;
+}
+
+.pi-explanation-note {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--card-color);
+    border-radius: 8px;
+    border-left: 4px solid #22c55e;
+    border: 1px solid var(--border-color);
+}
+
+.note-header {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #22c55e;
+}
+
+.note-text {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
 }
 
 .metric {
@@ -461,6 +546,12 @@ header h1 {
 .comparison-table td:not(:first-child) {
     font-family: 'Courier New', monospace;
     font-size: 0.9rem;
+}
+
+#originalRemainingTerm {
+    font-style: italic;
+    color: var(--text-secondary);
+    text-align: center;
 }
 
 /* Responsive Design */

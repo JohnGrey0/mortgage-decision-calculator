@@ -20,64 +20,75 @@
         <div class="calculator-section">
             <div class="input-grid">
                 <div class="input-group">
-                    <h3>💰 Payment Info</h3>
-                    <div class="form-row">
-                        <label for="currentPayment">Current Monthly Payment ($)</label>
-                        <input type="number" id="currentPayment" value="2500" step="10">
-                        <small class="field-note">Includes Principal + Interest + Taxes + Insurance + PMI</small>
-                    </div>
-                    <div class="form-row">
-                        <label for="extraPrincipal">Extra Principal Payment ($)</label>
-                        <input type="number" id="extraPrincipal" value="500" step="50">
-                        <small class="field-note">Additional amount going directly to principal</small>
-                    </div>
-                </div>
-
-                <div class="input-group">
                     <h3>🏡 Mortgage Details</h3>
                     <div class="form-row">
                         <label for="originalBalance">Original Loan Amount ($)</label>
-                        <input type="number" id="originalBalance" value="400000" step="1000">
+                        <input type="number" id="originalBalance" value="341910" step="1000">
                         <small class="field-note">Total amount originally borrowed</small>
                     </div>
                     <div class="form-row">
                         <label for="remainingBalance">Remaining Balance ($)</label>
-                        <input type="number" id="remainingBalance" value="350000" step="1000">
+                        <input type="number" id="remainingBalance" value="324607.85" step="1000">
                         <small class="field-note">Current principal balance owed</small>
                     </div>
                     <div class="form-row">
                         <label for="interestRate">Interest Rate (%)</label>
-                        <input type="number" id="interestRate" value="6.5" step="0.1">
+                        <input type="number" id="interestRate" value="5.75" step="0.1">
                         <small class="field-note">Annual interest rate on your loan</small>
                     </div>
                     <div class="form-row">
-                        <label for="remainingTerm">Remaining Term (years)</label>
-                        <input type="number" id="remainingTerm" value="25" step="1">
-                        <small class="field-note">Years left on your original loan term</small>
+                        <label for="loanStartDate">Loan Start Date</label>
+                        <input type="month" id="loanStartDate" value="2022-12">
+                        <small class="field-note">When your mortgage first started</small>
+                    </div>
+                    <div class="form-row">
+                        <label for="originalTerm">Original Loan Term (years)</label>
+                        <input type="number" id="originalTerm" value="30" step="1">
+                        <small class="field-note">Original length of your loan (typically 15 or 30 years)</small>
+                    </div>
+                    <div class="form-row calculated-field">
+                        <label for="remainingTerm">Calculated Remaining Term</label>
+                        <input type="text" id="remainingTerm" readonly>
+                        <small class="field-note">Automatically calculated from start date and original term</small>
                     </div>
                 </div>
 
                 <div class="input-group">
-                    <h3>📊 Investment Options</h3>
+                    <h3>💰 Payment Info</h3>
                     <div class="form-row">
-                        <label for="taxRate">Capital Gains Tax Rate (%)</label>
-                        <input type="number" id="taxRate" value="20" step="1">
-                        <small class="field-note">Your marginal capital gains tax rate</small>
+                        <label for="currentPayment">Monthly P&I Payment ($)</label>
+                        <input type="number" id="currentPayment" value="1995.29" step="10">
+                        <small class="field-note">Principal + Interest only (exclude taxes, insurance, PMI)</small>
                     </div>
-                    <div class="market-scenarios">
-                        <h4>Market Return Scenarios:</h4>
-                        <div class="scenario-item">
-                            <span class="scenario-label weak">🐻 Weak Market</span>
-                            <span class="scenario-rate">4% annually</span>
+                    <div class="form-row">
+                        <label for="extraPrincipal">Extra Principal Payment ($)</label>
+                        <input type="number" id="extraPrincipal" value="0" step="50">
+                        <small class="field-note">Additional amount going directly to principal</small>
+                    </div>
+                    <div class="form-row">
+                        <label for="annualBonus">Annual Principal Payment ($)</label>
+                        <input type="number" id="annualBonus" value="0" step="500">
+                        <small class="field-note">Yearly bonus/windfall applied to principal (e.g., tax refund, work bonus)</small>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <h3>� P&I Payment Verification</h3>
+                    <p class="strategy-description">Compare your statement P&I with standard calculation (small differences are normal due to lender rounding/methods)</p>
+                    <div class="verification-metrics">
+                        <div class="metric">
+                            <span class="label">Your P&I Payment:</span>
+                            <span class="value" id="userPIPayment">-</span>
                         </div>
-                        <div class="scenario-item">
-                            <span class="scenario-label average">📈 Average Market</span>
-                            <span class="scenario-rate">7% annually</span>
+                        <div class="metric">
+                            <span class="label">Standard Calculation:</span>
+                            <span class="value" id="calculatedPIPayment">-</span>
                         </div>
-                        <div class="scenario-item">
-                            <span class="scenario-label strong">🚀 Strong Market</span>
-                            <span class="scenario-rate">10% annually</span>
+                        <div class="metric">
+                            <span class="label">Difference:</span>
+                            <span class="value" id="piDifference">-</span>
                         </div>
+                        <div id="piExplanationNote"></div>
                     </div>
                 </div>
             </div>
@@ -188,10 +199,14 @@
                                 <td id="extraPrincipalAmount">-</td>
                             </tr>
                             <tr>
-                                <td>Loan Term</td>
+                                <td>Payoff Time</td>
                                 <td id="standardTerm">-</td>
                                 <td id="extraTerm">-</td>
                                 <td id="termReduction">-</td>
+                            </tr>
+                            <tr>
+                                <td>Original Remaining Term</td>
+                                <td id="originalRemainingTerm" colspan="3">-</td>
                             </tr>
                         </tbody>
                     </table>
