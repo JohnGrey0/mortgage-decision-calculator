@@ -407,6 +407,9 @@ function calculate() {
     // Update comparison table
     updateComparisonTable(standardPayoff, acceleratedPayoff, extraPrincipal, annualBonus);
     
+    // Update payment scenarios table
+    updatePaymentScenariosTable(remainingBalance, interestRate, window.exactRemainingMonths);
+    
     // Create charts
     createBalanceChart(standardPayoff, acceleratedPayoff);
     createStrategyChart(acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment);
@@ -1165,6 +1168,56 @@ function createComparisonChart(payoff, weak, average, strong) {
                 }
             }
         }
+    });
+}
+
+function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTermMonths) {
+    const scenariosBody = document.getElementById('paymentScenariosBody');
+    
+    // Clear existing rows
+    scenariosBody.innerHTML = '';
+    
+    // Get current values
+    const currentExtraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
+    const monthlyRate = interestRate / 100 / 12;
+    const monthlyPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingTermMonths)) / 
+                     (Math.pow(1 + monthlyRate, remainingTermMonths) - 1);
+    
+    // Calculate baseline (no extra payments)
+    const baselinePayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, 0);
+    
+    // Payment amounts to test
+    const paymentAmounts = [20, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 3000];
+    
+    paymentAmounts.forEach(extraAmount => {
+        const payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, extraAmount);
+        
+        // Calculate savings compared to baseline
+        const timeSaved = baselinePayoff.monthsToPayoff - payoff.monthsToPayoff;
+        const interestSaved = baselinePayoff.totalInterest - payoff.totalInterest;
+        const yearsSaved = Math.floor(timeSaved / 12);
+        const monthsSaved = timeSaved % 12;
+        
+        // Calculate percentage of P&I
+        const percentageOfPI = ((extraAmount / monthlyPI) * 100).toFixed(1);
+        
+        // Create row
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>+$${extraAmount.toLocaleString()}</td>
+            <td>${percentageOfPI}%</td>
+            <td>$${(monthlyPI + extraAmount).toFixed(0)}</td>
+            <td>${formatTime(payoff.monthsToPayoff)}</td>
+            <td class="time-saved">${yearsSaved > 0 ? yearsSaved + 'y ' : ''}${monthsSaved}m</td>
+            <td class="interest-saved">$${interestSaved.toLocaleString(undefined, {maximumFractionDigits: 0})}</td>
+        `;
+        
+        // Highlight current extra payment amount
+        if (extraAmount === currentExtraPrincipal) {
+            row.classList.add('current-payment');
+        }
+        
+        scenariosBody.appendChild(row);
     });
 }
 

@@ -554,6 +554,99 @@ header h1 {
     text-align: center;
 }
 
+.payment-scenarios-section {
+    margin: 3rem 0;
+    background: var(--card-color);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+}
+
+.payment-scenarios-section h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.scenarios-table-container {
+    overflow-x: auto;
+    margin-top: 1.5rem;
+}
+
+.scenarios-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--background-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.scenarios-table th,
+.scenarios-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.scenarios-table th {
+    background: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.scenarios-table tbody tr:hover {
+    background: var(--border-color);
+}
+
+.scenarios-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.scenarios-table td {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.scenarios-table td:first-child {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.scenarios-table td:not(:first-child) {
+    color: var(--text-primary);
+}
+
+.scenario-highlight {
+    background: rgba(37, 99, 235, 0.1) !important;
+    border-left: 3px solid var(--primary-color);
+}
+
+.scenarios-table .current-payment {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border-left: 4px solid var(--success-color);
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.scenarios-table .current-payment td {
+    font-weight: 600;
+    color: var(--success-color);
+}
+
+.scenarios-table .time-saved {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.scenarios-table .interest-saved {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .container {
