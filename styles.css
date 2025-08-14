@@ -289,6 +289,25 @@ header h1 .title-text {
     color: var(--text-primary);
 }
 
+/* Tooltip list styles */
+.tooltip-content ul:not(.value-list) {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+    list-style-type: disc;
+}
+
+.tooltip-content ul:not(.value-list) li {
+    margin: 0.3rem 0;
+    line-height: 1.4;
+    display: list-item;
+}
+
+.tooltip-content ul:not(.value-list) ul {
+    margin: 0.25rem 0;
+    padding-left: 1.2rem;
+    list-style-type: circle;
+}
+
 .form-row {
     margin-bottom: 1rem;
 }
@@ -326,11 +345,23 @@ header h1 .title-text {
     line-height: 1.3;
 }
 
-.calculated-field input {
+.calculated-field input[readonly] {
     background-color: var(--border-color);
     color: var(--text-secondary);
     font-style: italic;
     cursor: not-allowed;
+}
+
+.calculated-field input:not([readonly]) {
+    background-color: var(--input-background);
+    color: var(--text-color);
+    cursor: text;
+    border: 2px solid var(--border-color);
+}
+
+.calculated-field input:not([readonly]):focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
 }
 
 .calculated-field label {

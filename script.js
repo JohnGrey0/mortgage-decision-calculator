@@ -423,6 +423,7 @@ function calculate() {
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const originalTerm = parseFloat(document.getElementById('originalTerm').value);
     const remainingTerm = calculateRemainingTerm(); // Get calculated remaining term in years
+    const loanStartDate = document.getElementById('loanStartDate').value;
     const homeValue = parseFloat(document.getElementById('homeValue').value) || 0;
     const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
     const taxRate = 20; // Hardcoded 20% capital gains tax rate
@@ -437,10 +438,40 @@ function calculate() {
     }
     
     // Calculate mortgage scenarios using calculated P&I payment
-    // Standard: P&I only (no PMI)
-    // Accelerated: P&I + PMI + extra principal + annual bonus
-    const standardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0, 0, currentPayment, homeValue, 0);
-    const acceleratedPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, extraPrincipal, annualBonus, currentPayment, homeValue, monthlyPMI);
+    // Standard: Shows original loan maturity based on start date and original term
+    // Accelerated: Current remaining loan with P&I + PMI + extra principal + annual bonus
+    
+    // For standard payoff, calculate original loan maturity date
+    const startDate = new Date(loanStartDate + '-01');
+    const originalMaturityDate = new Date(startDate);
+    originalMaturityDate.setFullYear(originalMaturityDate.getFullYear() + originalTerm);
+    
+    // Calculate months from now to original maturity
+    const currentDate = new Date();
+    const monthsToOriginalMaturity = (originalMaturityDate.getFullYear() - currentDate.getFullYear()) * 12 + 
+                                    (originalMaturityDate.getMonth() - currentDate.getMonth());
+    
+    // Calculate what the standard payoff would be if continuing with current balance for remaining term
+    const baseStandardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0, 0, currentPayment, homeValue, 0);
+    
+    // Create standard payoff object with original maturity date but realistic financial data
+    const standardPayoff = {
+        monthsToPayoff: Math.max(0, monthsToOriginalMaturity),
+        payoffDate: originalMaturityDate,
+        totalInterest: baseStandardPayoff.totalInterest,
+        totalPayments: baseStandardPayoff.totalPayments,
+        monthlyPayment: currentPayment,
+        schedule: baseStandardPayoff.schedule,
+        totalPaid: baseStandardPayoff.totalPaid,
+        totalBonusApplied: baseStandardPayoff.totalBonusApplied,
+        totalPMIPaid: baseStandardPayoff.totalPMIPaid,
+        pmiEliminationMonth: baseStandardPayoff.pmiEliminationMonth
+    };
+    
+    // For accelerated calculation: if no extra payments, use same as standard for fair comparison
+    const acceleratedPayoff = (extraPrincipal === 0 && annualBonus === 0) ? 
+        standardPayoff : 
+        calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, extraPrincipal, annualBonus, currentPayment, homeValue, monthlyPMI);
     
     // Store for scenarios table to use the exact same baseline
     window.lastStandardPayoff = standardPayoff;
@@ -1246,10 +1277,10 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
             const biweeklyAnnualExtra = biweeklyExtraPayment * 26;
             const monthlyEquivalentExtra = biweeklyAnnualExtra / 12;
             
-            // For $0 extra: match baseline (P&I only, no PMI, no annual bonus)
+            // For $0 extra: use the corrected baseline with original loan maturity
             // For >$0 extra: include PMI and annual bonus
             if (extraAmount === 0) {
-                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, 0, 0, monthlyPI, homeValue, 0);
+                payoff = window.lastStandardPayoff;
             } else {
                 payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, monthlyEquivalentExtra, annualBonus, monthlyPI, homeValue, monthlyPMI);
             }
@@ -1267,10 +1298,10 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
                 `+$${extraAmount.toLocaleString()}`;
         } else {
             // Monthly mode: use monthly extra as-is
-            // For $0 extra: match baseline (P&I only, no PMI, no annual bonus)
+            // For $0 extra: use the corrected baseline with original loan maturity
             // For >$0 extra: include PMI and annual bonus
             if (extraAmount === 0) {
-                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, 0, 0, monthlyPI, homeValue, 0);
+                payoff = window.lastStandardPayoff;
             } else {
                 payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, extraAmount, annualBonus, monthlyPI, homeValue, monthlyPMI);
             }
@@ -1785,6 +1816,54 @@ function showTooltip(type) {
                         <li><span>Equivalent Extra Monthly:</span> <strong>2.17 payments/year</strong></li>
                         <li><span>Your Current Extra:</span> <strong>$${extraPrincipal.toLocaleString()}/month</strong></li>
                         <li><span>Bi-weekly Equivalent:</span> <strong>$${(extraPrincipal / 2.17).toLocaleString()} every 2 weeks</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+            
+        case 'mortgage-comparison':
+            title.textContent = '📋 Mortgage Payment Comparison - How the Calculator Works';
+            content = `
+                <div class="calculation-section">
+                    <h5>🔄 Comparison Logic</h5>
+                    <p>The mortgage payment comparison shows a side-by-side analysis of your loan scenarios:</p>
+                    <ul>
+                        <li><strong>Standard Payment:</strong> Uses original loan maturity date based on your loan start date and original term</li>
+                        <li><strong>With Extra Principal:</strong> Shows accelerated payoff with your extra payments and PMI included</li>
+                    </ul>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>⚖️ Fair Comparison Rules</h5>
+                    <p><strong>When Extra Principal = $0 and Annual Bonus = $0:</strong></p>
+                    <ul>
+                        <li>Both scenarios show identical results (P&I only, no PMI)</li>
+                        <li>This ensures a true baseline comparison</li>
+                        <li>No time or interest "savings" are shown since nothing changes</li>
+                    </ul>
+                    
+                    <p><strong>When Extra Payments > $0:</strong></p>
+                    <ul>
+                        <li>Standard scenario remains unchanged (P&I only)</li>
+                        <li>Extra payment scenario includes PMI and extra payments</li>
+                        <li>This shows realistic savings from your accelerated strategy</li>
+                    </ul>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>📅 Date Calculations</h5>
+                    <p><strong>Standard Payoff Date:</strong> Original loan start date + original term</p>
+                    <p><strong>Accelerated Payoff Date:</strong> Current date + months to payoff with extra payments</p>
+                    <p>This approach gives you the true time savings compared to your original loan schedule.</p>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Your Current Scenario:</h6>
+                    <ul class="value-list">
+                        <li><span>Extra Principal:</span> <strong>$${extraPrincipal.toLocaleString()}/month</strong></li>
+                        <li><span>Annual Bonus:</span> <strong>$${annualBonus.toLocaleString()}/year</strong></li>
+                        <li><span>Monthly PMI:</span> <strong>$${actualMonthlyPMI.toLocaleString()}</strong></li>
+                        <li><span>Comparison Type:</span> <strong>${(extraPrincipal === 0 && annualBonus === 0) ? 'Identical Baseline' : 'Accelerated vs Standard'}</strong></li>
                     </ul>
                 </div>
             `;
