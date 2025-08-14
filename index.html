@@ -55,40 +55,20 @@
 
                 <div class="input-group">
                     <h3>💰 Payment Info</h3>
-                    <div class="form-row">
+                    <div class="form-row calculated-field">
                         <label for="currentPayment">Monthly P&I Payment ($)</label>
-                        <input type="number" id="currentPayment" value="1995.29" step="10">
-                        <small class="field-note">Principal + Interest only (exclude taxes, insurance, PMI)</small>
+                        <input type="text" id="currentPayment" readonly>
+                        <small class="field-note">Automatically calculated from loan terms (Principal + Interest only)</small>
                     </div>
                     <div class="form-row">
-                        <label for="extraPrincipal">Extra Principal Payment ($)</label>
-                        <input type="number" id="extraPrincipal" value="100" step="50">
-                        <small class="field-note">Additional amount going directly to principal</small>
+                        <label for="extraPrincipal">Monthly Extra Principal ($)</label>
+                        <input type="number" id="extraPrincipal" value="0" step="50">
+                        <small class="field-note">Additional monthly amount going directly to principal</small>
                     </div>
                     <div class="form-row">
-                        <label for="annualBonus">Annual Principal Payment ($)</label>
-                        <input type="number" id="annualBonus" value="1000" step="500">
-                        <small class="field-note">Yearly bonus/windfall applied to principal (e.g., tax refund, work bonus)</small>
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <h3>🔍 P&I Payment Verification</h3>
-                    <p class="strategy-description">Compare your statement P&I with standard calculation (small differences are normal due to lender rounding/methods)</p>
-                    <div class="verification-metrics">
-                        <div class="metric">
-                            <span class="label">Your P&I Payment:</span>
-                            <span class="value" id="userPIPayment">-</span>
-                        </div>
-                        <div class="metric">
-                            <span class="label">Standard Calculation:</span>
-                            <span class="value" id="calculatedPIPayment">-</span>
-                        </div>
-                        <div class="metric">
-                            <span class="label">Difference:</span>
-                            <span class="value" id="piDifference">-</span>
-                        </div>
-                        <div id="piExplanationNote"></div>
+                        <label for="annualBonus">Annual Bonus Payment ($)</label>
+                        <input type="number" id="annualBonus" value="0" step="500">
+                        <small class="field-note">Yearly lump sum applied to principal (e.g., tax refund, work bonus)</small>
                     </div>
                 </div>
             </div>
@@ -105,8 +85,12 @@
                     <h3>🏠 Mortgage Payoff Strategy</h3>
                     <p class="strategy-description">Pay loan off early to show potential savings</p>
                     <div class="metric">
-                        <span class="label">Time Saved:</span>
-                        <span class="value" id="timeSaved">-</span>
+                        <span class="label">Standard Payoff Date:</span>
+                        <span class="value" id="standardPayoffSummary">-</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Accelerated Payoff Date:</span>
+                        <span class="value" id="acceleratedPayoffSummary">-</span>
                     </div>
                     <div class="metric">
                         <span class="label">Interest Saved:</span>
@@ -199,7 +183,7 @@
                                 <td id="extraPrincipalAmount">-</td>
                             </tr>
                             <tr>
-                                <td>Payoff Time</td>
+                                <td>Loan Term</td>
                                 <td id="standardTerm">-</td>
                                 <td id="extraTerm">-</td>
                                 <td id="termReduction">-</td>
@@ -228,8 +212,7 @@
                             <tr>
                                 <th>Extra Payment</th>
                                 <th>% of P&I</th>
-                                <th>Total Payment</th>
-                                <th>Payoff Time</th>
+                                <th>Payoff Date</th>
                                 <th>Time Saved</th>
                                 <th>Interest Saved</th>
                             </tr>
@@ -262,7 +245,7 @@
                                 <span class="value" id="monthlyAnnualTotal">$0</span>
                             </div>
                             <div class="detail-item">
-                                <span class="label">Payoff Time:</span>
+                                <span class="label">Payoff Date:</span>
                                 <span class="value" id="monthlyPayoffTime">0 years</span>
                             </div>
                             <div class="detail-item">
@@ -290,7 +273,7 @@
                                 <span class="value" id="biweeklyAnnualTotal">$0</span>
                             </div>
                             <div class="detail-item">
-                                <span class="label">Payoff Time:</span>
+                                <span class="label">Payoff Date:</span>
                                 <span class="value" id="biweeklyPayoffTime">0 years</span>
                             </div>
                             <div class="detail-item">

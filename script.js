@@ -81,10 +81,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Update P&I verification when relevant fields change
-    if (currentPayment && remainingBalance && interestRate) {
-        currentPayment.addEventListener('input', updatePIVerificationCard);
-        remainingBalance.addEventListener('input', updatePIVerificationCard);
+    const originalBalanceField = document.getElementById('originalBalance');
+    const originalTermField = document.getElementById('originalTerm');
+    
+    if (originalBalanceField && interestRate && originalTermField) {
+        originalBalanceField.addEventListener('input', updatePIVerificationCard);
         interestRate.addEventListener('input', updatePIVerificationCard);
+        originalTermField.addEventListener('input', updatePIVerificationCard);
         
         // Initial calculation (but don't show insight note until after calculations)
         updatePIVerificationCard();
@@ -285,54 +288,24 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
-// Validate that user's P&I input is reasonable
-function validatePIPayment(userPayment, balance, rate, term) {
-    // Check for invalid inputs first
-    if (!userPayment || !balance || !rate || !term || 
-        userPayment <= 0 || balance <= 0 || rate <= 0 || term <= 0) {
-        return {
-            calculatedPI: 0,
-            difference: 0,
-            percentDifference: 0,
-            isReasonable: true // Skip validation if inputs are invalid
-        };
+// Calculate monthly P&I payment using standard mortgage formula
+function calculateMonthlyPI(loanAmount, annualRate, termYears) {
+    if (!loanAmount || !annualRate || !termYears || 
+        loanAmount <= 0 || annualRate <= 0 || termYears <= 0) {
+        return 0;
     }
     
-    const monthlyRate = rate / 100 / 12;
-    const numberOfPayments = term * 12;
+    const monthlyRate = annualRate / 100 / 12;
+    const numberOfPayments = termYears * 12;
     
-    // Check for edge cases that could cause division by zero
     if (monthlyRate <= 0 || numberOfPayments <= 0) {
-        return {
-            calculatedPI: 0,
-            difference: 0,
-            percentDifference: 0,
-            isReasonable: true
-        };
+        return 0;
     }
     
-    const calculatedPI = balance * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
-                        (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+    const monthlyPI = loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
+                     (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
     
-    // Check if calculation resulted in a valid number
-    if (!calculatedPI || calculatedPI <= 0 || !isFinite(calculatedPI)) {
-        return {
-            calculatedPI: 0,
-            difference: 0,
-            percentDifference: 0,
-            isReasonable: true
-        };
-    }
-    
-    const difference = Math.abs(userPayment - calculatedPI);
-    const percentDifference = (difference / calculatedPI) * 100;
-    
-    return {
-        calculatedPI,
-        difference,
-        percentDifference,
-        isReasonable: percentDifference < 15 // Allow 15% variance for rounding, different terms, etc.
-    };
+    return isFinite(monthlyPI) ? monthlyPI : 0;
 }
 
 function formatTime(months) {
@@ -348,6 +321,15 @@ function formatTime(months) {
     }
 }
 
+function formatPayoffDate(monthsFromNow) {
+    const currentDate = new Date();
+    const payoffDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + monthsFromNow, 1);
+    return payoffDate.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long' 
+    });
+}
+
 function calculate() {
     const button = document.querySelector('.calculate-btn');
     button.classList.add('loading');
@@ -356,32 +338,23 @@ function calculate() {
     const currentPayment = parseFloat(document.getElementById('currentPayment').value);
     const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value);
     const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
+    const originalBalance = parseFloat(document.getElementById('originalBalance').value);
     const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
+    const originalTerm = parseFloat(document.getElementById('originalTerm').value);
     const remainingTerm = calculateRemainingTerm(); // Get calculated remaining term in years
     const taxRate = 20; // Hardcoded 20% capital gains tax rate
     
     // Validate inputs
     if (isNaN(currentPayment) || isNaN(extraPrincipal) || 
-        isNaN(remainingBalance) || isNaN(interestRate) || !remainingTerm) {
+        isNaN(originalBalance) || isNaN(remainingBalance) || isNaN(interestRate) || 
+        isNaN(originalTerm) || !remainingTerm) {
         alert('Please fill in all required fields with valid numbers and ensure loan start date is entered.');
         button.classList.remove('loading');
         return;
     }
     
-    // Validate P&I payment is reasonable
-    const piValidation = validatePIPayment(currentPayment, remainingBalance, interestRate, remainingTerm);
-    
-    // Only show validation warning if we have a valid calculated P&I and it's significantly different
-    if (!piValidation.isReasonable && piValidation.calculatedPI > 0) {
-        const message = `⚠️ P&I Payment Check:\nYour entered payment: ${formatCurrency(currentPayment)}\nCalculated P&I: ${formatCurrency(piValidation.calculatedPI)}\nDifference: ${piValidation.percentDifference.toFixed(1)}%\n\nThis seems like a large difference. Please verify your P&I payment amount.\n\nClick OK to continue anyway, or Cancel to review your inputs.`;
-        if (!confirm(message)) {
-            button.classList.remove('loading');
-            return;
-        }
-    }
-    
-    // Calculate mortgage scenarios using user's actual P&I payment
+    // Calculate mortgage scenarios using calculated P&I payment
     const standardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0, 0, currentPayment);
     const acceleratedPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, extraPrincipal, annualBonus, currentPayment);
     
@@ -441,17 +414,29 @@ function calculate() {
 }
 
 function updateSummaryCards(standard, accelerated, weak, average, strong, hybridWeak, hybridAverage, hybridStrong) {
-    const timeSaved = standard.monthsToPayoff - accelerated.monthsToPayoff;
+    const currentDate = new Date();
     const interestSaved = standard.totalInterest - accelerated.totalInterest;
     const taxRate = 20; // Hardcoded 20% capital gains tax rate
     const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value);
+    
+    // Calculate payoff dates
+    const standardPayoffDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + standard.monthsToPayoff, 1);
+    const acceleratedPayoffDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + accelerated.monthsToPayoff, 1);
     
     // Calculate remaining balance and original mortgage amount for complete picture
     const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
     const originalBalance = parseFloat(document.getElementById('originalBalance').value);
     const alreadyPaidPrincipal = originalBalance - remainingBalance;
     
-    document.getElementById('timeSaved').textContent = formatTime(timeSaved);
+    // Update payoff dates instead of time saved
+    document.getElementById('standardPayoffSummary').textContent = standardPayoffDate.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long' 
+    });
+    document.getElementById('acceleratedPayoffSummary').textContent = acceleratedPayoffDate.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long' 
+    });
     document.getElementById('interestSaved').textContent = formatCurrency(interestSaved);
     
     // Updated mortgage information for complete picture
@@ -485,92 +470,26 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
 }
 
 function updatePIVerificationCard() {
-    const currentPayment = parseFloat(document.getElementById('currentPayment').value);
-    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
+    const originalBalance = parseFloat(document.getElementById('originalBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
-    const remainingTerm = calculateRemainingTerm(); // Get calculated remaining term in years
+    const originalTerm = parseFloat(document.getElementById('originalTerm').value);
     
-    if (!remainingTerm || isNaN(currentPayment) || isNaN(remainingBalance) || isNaN(interestRate)) {
-        // If we can't calculate remaining term or missing values, show placeholder
-        document.getElementById('userPIPayment').textContent = '-';
-        document.getElementById('calculatedPIPayment').textContent = '-';
-        document.getElementById('piDifference').textContent = 'Complete all fields';
+    if (isNaN(originalBalance) || isNaN(interestRate) || isNaN(originalTerm)) {
+        // If missing values, clear the payment field
+        document.getElementById('currentPayment').value = '';
         return;
     }
     
-    // Calculate the theoretical P&I payment
-    const monthlyRate = interestRate / 100 / 12;
-    const numberOfPayments = remainingTerm * 12;
-    const calculatedPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
-                        (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
+    // Calculate the P&I payment using original loan terms
+    const calculatedPI = calculateMonthlyPI(originalBalance, interestRate, originalTerm);
     
-    // Calculate difference
-    const difference = currentPayment - calculatedPI;
-    const percentDifference = ((difference / calculatedPI) * 100);
-    
-    // Update the UI
-    document.getElementById('userPIPayment').textContent = formatCurrency(currentPayment);
-    document.getElementById('calculatedPIPayment').textContent = formatCurrency(calculatedPI);
-    
-    let differenceText = formatCurrency(Math.abs(difference));
-    if (Math.abs(percentDifference) < 2) {
-        // Small difference - very normal
-        differenceText = `${formatCurrency(Math.abs(difference))} (${Math.abs(percentDifference).toFixed(1)}%)`;
-        document.getElementById('piDifference').textContent = differenceText;
-        document.getElementById('piDifference').style.color = '#22c55e'; // Green for normal difference
-        document.getElementById('piDifference').className = 'difference-normal';
-    } else if (difference > 0) {
-        differenceText = `+${differenceText} (${percentDifference.toFixed(1)}%)`;
-        document.getElementById('piDifference').textContent = differenceText;
-        document.getElementById('piDifference').style.color = '#f59e0b'; // Orange for higher
-        document.getElementById('piDifference').className = 'difference-higher';
-    } else if (difference < 0) {
-        differenceText = `-${differenceText} (${Math.abs(percentDifference).toFixed(1)}%)`;
-        document.getElementById('piDifference').textContent = differenceText;
-        document.getElementById('piDifference').style.color = '#f59e0b'; // Orange for lower
-        document.getElementById('piDifference').className = 'difference-lower';
-    } else {
-        differenceText = 'Perfect match!';
-        document.getElementById('piDifference').textContent = differenceText;
-        document.getElementById('piDifference').style.color = '#22c55e'; // Green for exact match
-        document.getElementById('piDifference').className = 'difference-perfect';
+    if (!calculatedPI || calculatedPI <= 0) {
+        document.getElementById('currentPayment').value = '';
+        return;
     }
     
-    // Add explanatory note if there's a significant time difference between calculated term and actual payoff
-    // Only show this after calculations have been run
-    const timeDifferenceMonths = window.exactRemainingMonths && window.lastStandardPayoffMonths ? 
-                                Math.abs(window.exactRemainingMonths - window.lastStandardPayoffMonths) : 0;
-    
-    if (timeDifferenceMonths >= 6 && window.lastStandardPayoffMonths) {
-        const noteElement = document.getElementById('piExplanationNote') || 
-                           (() => {
-                               const note = document.createElement('div');
-                               note.id = 'piExplanationNote';
-                               note.className = 'pi-explanation-note';
-                               return note;
-                           })();
-        
-        const monthsDiff = Math.round(timeDifferenceMonths);
-        const isPayingFaster = window.exactRemainingMonths > (window.lastStandardPayoffMonths || 0);
-        
-        if (isPayingFaster) {
-            noteElement.innerHTML = `
-                <div class="note-header">💡 Payment Insight</div>
-                <div class="note-text">Your actual payment pays off the loan ~${monthsDiff} months faster than the original schedule. 
-                This is normal - lenders often round payments up slightly, creating a built-in acceleration effect.</div>
-            `;
-            
-            // Ensure note is in the verification metrics container
-            const container = document.querySelector('.verification-metrics');
-            if (container && !container.contains(noteElement)) {
-                container.appendChild(noteElement);
-            }
-        }
-    } else {
-        // Remove note if difference is small
-        const existingNote = document.getElementById('piExplanationNote');
-        if (existingNote) existingNote.remove();
-    }
+    // Update the payment field
+    document.getElementById('currentPayment').value = calculatedPI.toFixed(2);
 }
 
 function updateComparisonTable(standard, accelerated, extraPrincipal, annualBonus = 0) {
@@ -617,9 +536,10 @@ function updateComparisonTable(standard, accelerated, extraPrincipal, annualBonu
         : '+' + formatCurrency(extraPrincipal);
     document.getElementById('extraPrincipalAmount').textContent = extraAmountText;
     
-    document.getElementById('standardTerm').textContent = formatTime(standard.monthsToPayoff);
-    document.getElementById('extraTerm').textContent = formatTime(accelerated.monthsToPayoff);
-    document.getElementById('termReduction').textContent = '-' + formatTime(timeSaved);
+    // Update payoff times to show actual dates instead of time periods
+    document.getElementById('standardTerm').textContent = formatPayoffDate(standard.monthsToPayoff);
+    document.getElementById('extraTerm').textContent = formatPayoffDate(accelerated.monthsToPayoff);
+    document.getElementById('termReduction').textContent = formatTime(timeSaved) + ' sooner';
     
     // Show the original calculated remaining term
     const originalRemainingTerm = window.exactRemainingMonths || 0;
@@ -1228,17 +1148,17 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
             
             payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, monthlyEquivalentExtra, 0, monthlyPI);
             percentageOfPI = ((biweeklyExtraPayment / monthlyPI) * 100).toFixed(1);
-            totalPaymentDisplay = `$${monthlyPI.toFixed(0)} + $${biweeklyExtraPayment.toFixed(0)} bi-weekly`;
+            totalPaymentDisplay = extraAmount > 0 ? `+$${biweeklyExtraPayment.toFixed(0)} Bi-Weekly` : `No Extra Payment`;
             extraPaymentDisplay = isCurrentPayment ? 
-                `+$${extraAmount.toLocaleString()} 👈 YOUR PAYMENT` : 
+                `+$${extraAmount.toLocaleString()} 👈` : 
                 `+$${extraAmount.toLocaleString()}`;
         } else {
             // Monthly mode: use monthly extra as-is
             payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, extraAmount, 0, monthlyPI);
             percentageOfPI = ((extraAmount / monthlyPI) * 100).toFixed(1);
-            totalPaymentDisplay = `$${(monthlyPI + extraAmount).toFixed(0)}`;
+            totalPaymentDisplay = extraAmount > 0 ? `+$${extraAmount.toFixed(0)} Monthly` : `No Extra Payment`;
             extraPaymentDisplay = isCurrentPayment ? 
-                `+$${extraAmount.toLocaleString()} 👈 YOUR PAYMENT` : 
+                `+$${extraAmount.toLocaleString()} 👈` : 
                 `+$${extraAmount.toLocaleString()}`;
         }
         
@@ -1250,12 +1170,14 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
         
         // Create row
         const row = document.createElement('tr');
+        
+        // Add indicator for current payment
+        const currentPaymentIndicator = isCurrentPayment ? ' 👈' : '';
             
         row.innerHTML = `
-            <td>${extraPaymentDisplay}</td>
+            <td>${totalPaymentDisplay}${currentPaymentIndicator}</td>
             <td>${percentageOfPI}%</td>
-            <td>${totalPaymentDisplay}</td>
-            <td>${formatTime(payoff.monthsToPayoff)}</td>
+            <td>${formatPayoffDate(payoff.monthsToPayoff)}</td>
             <td class="time-saved">${yearsSaved > 0 ? yearsSaved + 'y ' : ''}${monthsSaved}m</td>
             <td class="interest-saved">$${interestSaved.toLocaleString(undefined, {maximumFractionDigits: 0})}</td>
         `;
@@ -1298,7 +1220,7 @@ function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermM
         `${formatCurrency(actualMonthlyPayment)} + ${formatCurrency(extraPrincipal)} extra` : 
         formatCurrency(actualMonthlyPayment);
     document.getElementById('monthlyAnnualTotal').textContent = formatCurrency(totalMonthlyPayment * 12);
-    document.getElementById('monthlyPayoffTime').textContent = formatTime(monthlyPayoff.monthsToPayoff);
+    document.getElementById('monthlyPayoffTime').textContent = formatPayoffDate(monthlyPayoff.monthsToPayoff);
     document.getElementById('monthlyTotalInterest').textContent = formatCurrency(monthlyPayoff.totalInterest);
     
     // Update bi-weekly strategy display
@@ -1307,7 +1229,7 @@ function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermM
     
     document.getElementById('biweeklyPaymentAmount').textContent = biweeklyDescription;
     document.getElementById('biweeklyAnnualTotal').textContent = formatCurrency(totalBiweeklyAnnual);
-    document.getElementById('biweeklyPayoffTime').textContent = formatTime(biweeklyPayoff.monthsToPayoff);
+    document.getElementById('biweeklyPayoffTime').textContent = formatPayoffDate(biweeklyPayoff.monthsToPayoff);
     document.getElementById('biweeklyTotalInterest').textContent = formatCurrency(biweeklyPayoff.totalInterest);
     
     // Calculate savings (bi-weekly vs monthly with extra)
