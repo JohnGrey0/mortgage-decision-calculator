@@ -27,6 +27,11 @@
                         <small class="field-note">Total amount originally borrowed</small>
                     </div>
                     <div class="form-row">
+                        <label for="homeValue">Original Home Value ($)</label>
+                        <input type="number" id="homeValue" value="390000" step="1000">
+                        <small class="field-note">Original purchase price or appraised value when loan originated</small>
+                    </div>
+                    <div class="form-row">
                         <label for="remainingBalance">Remaining Balance ($)</label>
                         <input type="number" id="remainingBalance" value="324607.85" step="1000">
                         <small class="field-note">Current principal balance owed</small>
@@ -46,30 +51,29 @@
                         <input type="number" id="originalTerm" value="30" step="1">
                         <small class="field-note">Original length of your loan (typically 15 or 30 years)</small>
                     </div>
-                    <div class="form-row calculated-field">
-                        <label for="remainingTerm">Calculated Remaining Term</label>
-                        <input type="text" id="remainingTerm" readonly>
-                        <small class="field-note">Automatically calculated from start date and original term</small>
-                    </div>
                 </div>
 
                 <div class="input-group">
-                    <h3>💰 Payment Info</h3>
+                    <h3>🔢 Calculated Values</h3>
+                    <div class="form-row calculated-field">
+                        <label for="remainingTerm">Remaining Term</label>
+                        <input type="text" id="remainingTerm" readonly>
+                        <small class="field-note">Automatically calculated from start date and original term</small>
+                    </div>
                     <div class="form-row calculated-field">
                         <label for="currentPayment">Monthly P&I Payment ($)</label>
                         <input type="text" id="currentPayment" readonly>
                         <small class="field-note">Automatically calculated from loan terms (Principal + Interest only)</small>
-                    </div>
-                    <div class="form-row">
-                        <label for="homeValue">Original Home Value ($)</label>
-                        <input type="number" id="homeValue" value="427387" step="1000">
-                        <small class="field-note">Original purchase price or appraised value when loan originated</small>
                     </div>
                     <div class="form-row calculated-field">
                         <label for="pmiPayment">Monthly PMI ($)</label>
                         <input type="number" id="pmiPayment" step="10">
                         <small class="field-note">Calculated at 0.5% annually, or enter your actual PMI amount</small>
                     </div>
+                </div>
+
+                <div class="input-group">
+                    <h3>💰 Payment Info</h3>
                     <div class="form-row">
                         <label for="extraPrincipal">Monthly Extra Principal ($)</label>
                         <input type="number" id="extraPrincipal" value="0" step="50">
