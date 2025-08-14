@@ -408,7 +408,20 @@ function calculate() {
     updateComparisonTable(standardPayoff, acceleratedPayoff, extraPrincipal, annualBonus);
     
     // Update payment scenarios table
-    updatePaymentScenariosTable(remainingBalance, interestRate, window.exactRemainingMonths);
+    // Store data for toggle functionality
+    window.lastScenariosData = {
+        remainingBalance: remainingBalance,
+        interestRate: interestRate,
+        remainingTermMonths: window.exactRemainingMonths,
+        currentPayment: currentPayment
+    };
+    
+    // Determine current mode based on active toggle
+    const isbiweeklyActive = document.getElementById('biweeklyToggle') && 
+                            document.getElementById('biweeklyToggle').classList.contains('active');
+    const mode = isbiweeklyActive ? 'biweekly' : 'monthly';
+    
+    updatePaymentScenariosTable(remainingBalance, interestRate, window.exactRemainingMonths, mode, currentPayment);
     
     // Update bi-weekly comparison
     updateBiweeklyComparison(remainingBalance, interestRate, window.exactRemainingMonths, currentPayment, extraPrincipal);
@@ -1174,7 +1187,7 @@ function createComparisonChart(payoff, weak, average, strong) {
     });
 }
 
-function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTermMonths) {
+function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTermMonths, mode = 'monthly', currentPayment = null) {
     const scenariosBody = document.getElementById('paymentScenariosBody');
     
     // Clear existing rows
@@ -1183,11 +1196,14 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
     // Get current values
     const currentExtraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
     const monthlyRate = interestRate / 100 / 12;
-    const monthlyPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingTermMonths)) / 
-                     (Math.pow(1 + monthlyRate, remainingTermMonths) - 1);
+    const calculatedPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingTermMonths)) / 
+                        (Math.pow(1 + monthlyRate, remainingTermMonths) - 1);
     
-    // Calculate baseline (no extra payments)
-    const baselinePayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, 0);
+    // Use user's current payment or fall back to calculated P&I
+    const monthlyPI = currentPayment || calculatedPI;
+    
+    // Calculate baseline (no extra payments) using user's P&I
+    const baselinePayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, 0, 0, monthlyPI);
     
     // Payment amounts to test
     let paymentAmounts = [20, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 3000];
@@ -1201,7 +1217,30 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
     paymentAmounts.sort((a, b) => a - b);
     
     paymentAmounts.forEach(extraAmount => {
-        const payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, extraAmount);
+        let payoff, percentageOfPI, totalPaymentDisplay, extraPaymentDisplay;
+        const isCurrentPayment = extraAmount === currentExtraPrincipal;
+        
+        if (mode === 'biweekly') {
+            // Bi-weekly mode: convert monthly extra to bi-weekly equivalent
+            const biweeklyExtraPayment = extraAmount / 2;
+            const biweeklyAnnualExtra = biweeklyExtraPayment * 26;
+            const monthlyEquivalentExtra = biweeklyAnnualExtra / 12;
+            
+            payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, monthlyEquivalentExtra, 0, monthlyPI);
+            percentageOfPI = ((biweeklyExtraPayment / monthlyPI) * 100).toFixed(1);
+            totalPaymentDisplay = `$${monthlyPI.toFixed(0)} + $${biweeklyExtraPayment.toFixed(0)} bi-weekly`;
+            extraPaymentDisplay = isCurrentPayment ? 
+                `+$${extraAmount.toLocaleString()} 👈 YOUR PAYMENT` : 
+                `+$${extraAmount.toLocaleString()}`;
+        } else {
+            // Monthly mode: use monthly extra as-is
+            payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, extraAmount, 0, monthlyPI);
+            percentageOfPI = ((extraAmount / monthlyPI) * 100).toFixed(1);
+            totalPaymentDisplay = `$${(monthlyPI + extraAmount).toFixed(0)}`;
+            extraPaymentDisplay = isCurrentPayment ? 
+                `+$${extraAmount.toLocaleString()} 👈 YOUR PAYMENT` : 
+                `+$${extraAmount.toLocaleString()}`;
+        }
         
         // Calculate savings compared to baseline
         const timeSaved = baselinePayoff.monthsToPayoff - payoff.monthsToPayoff;
@@ -1209,20 +1248,13 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
         const yearsSaved = Math.floor(timeSaved / 12);
         const monthsSaved = timeSaved % 12;
         
-        // Calculate percentage of P&I
-        const percentageOfPI = ((extraAmount / monthlyPI) * 100).toFixed(1);
-        
         // Create row
         const row = document.createElement('tr');
-        const isCurrentPayment = extraAmount === currentExtraPrincipal;
-        const extraPaymentDisplay = isCurrentPayment ? 
-            `+$${extraAmount.toLocaleString()} 👈 YOUR PAYMENT` : 
-            `+$${extraAmount.toLocaleString()}`;
             
         row.innerHTML = `
             <td>${extraPaymentDisplay}</td>
             <td>${percentageOfPI}%</td>
-            <td>$${(monthlyPI + extraAmount).toFixed(0)}</td>
+            <td>${totalPaymentDisplay}</td>
             <td>${formatTime(payoff.monthsToPayoff)}</td>
             <td class="time-saved">${yearsSaved > 0 ? yearsSaved + 'y ' : ''}${monthsSaved}m</td>
             <td class="interest-saved">$${interestSaved.toLocaleString(undefined, {maximumFractionDigits: 0})}</td>
@@ -1310,6 +1342,44 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Add toggle functionality for payment scenarios
+    const monthlyToggle = document.getElementById('monthlyToggle');
+    const biweeklyToggle = document.getElementById('biweeklyToggle');
+    
+    if (monthlyToggle && biweeklyToggle) {
+        monthlyToggle.addEventListener('click', function() {
+            monthlyToggle.classList.add('active');
+            biweeklyToggle.classList.remove('active');
+            
+            // Re-run scenarios in monthly mode if we have data
+            if (window.lastScenariosData) {
+                updatePaymentScenariosTable(
+                    window.lastScenariosData.remainingBalance,
+                    window.lastScenariosData.interestRate,
+                    window.lastScenariosData.remainingTermMonths,
+                    'monthly',
+                    window.lastScenariosData.currentPayment
+                );
+            }
+        });
+        
+        biweeklyToggle.addEventListener('click', function() {
+            biweeklyToggle.classList.add('active');
+            monthlyToggle.classList.remove('active');
+            
+            // Re-run scenarios in bi-weekly mode if we have data
+            if (window.lastScenariosData) {
+                updatePaymentScenariosTable(
+                    window.lastScenariosData.remainingBalance,
+                    window.lastScenariosData.interestRate,
+                    window.lastScenariosData.remainingTermMonths,
+                    'biweekly',
+                    window.lastScenariosData.currentPayment
+                );
+            }
+        });
+    }
 });
 
 // Add some sample data on load for demo purposes

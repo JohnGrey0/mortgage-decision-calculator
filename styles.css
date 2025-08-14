@@ -570,6 +570,36 @@ header h1 {
     text-align: center;
 }
 
+.scenarios-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+}
+
+.toggle-btn {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid var(--border-color);
+    background: var(--surface-color);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.toggle-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+}
+
+.toggle-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
 .scenarios-table-container {
     overflow-x: auto;
     margin-top: 1.5rem;
