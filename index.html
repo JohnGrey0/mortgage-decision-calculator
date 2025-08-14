@@ -61,6 +61,16 @@
                         <small class="field-note">Automatically calculated from loan terms (Principal + Interest only)</small>
                     </div>
                     <div class="form-row">
+                        <label for="homeValue">Original Home Value ($)</label>
+                        <input type="number" id="homeValue" value="427387" step="1000">
+                        <small class="field-note">Original purchase price or appraised value when loan originated</small>
+                    </div>
+                    <div class="form-row calculated-field">
+                        <label for="pmiPayment">Monthly PMI ($)</label>
+                        <input type="number" id="pmiPayment" step="10">
+                        <small class="field-note">Calculated at 0.5% annually, or enter your actual PMI amount</small>
+                    </div>
+                    <div class="form-row">
                         <label for="extraPrincipal">Monthly Extra Principal ($)</label>
                         <input type="number" id="extraPrincipal" value="0" step="50">
                         <small class="field-note">Additional monthly amount going directly to principal</small>
