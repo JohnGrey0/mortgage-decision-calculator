@@ -20,7 +20,9 @@
         <div class="calculator-section">
             <div class="input-grid">
                 <div class="input-group">
-                    <h3>🏡 Mortgage Details</h3>
+                    <h3>🏡 Mortgage Details 
+                        <span class="help-icon" onclick="showTooltip('mortgage-details')" title="Click for detailed explanation">❓</span>
+                    </h3>
                     <div class="form-row">
                         <label for="originalBalance">Original Loan Amount ($)</label>
                         <input type="number" id="originalBalance" value="341910" step="1000">
@@ -54,12 +56,9 @@
                 </div>
 
                 <div class="input-group">
-                    <h3>🔢 Calculated Values</h3>
-                    <div class="form-row calculated-field">
-                        <label for="remainingTerm">Remaining Term</label>
-                        <input type="text" id="remainingTerm" readonly>
-                        <small class="field-note">Automatically calculated from start date and original term</small>
-                    </div>
+                    <h3>🔢 Calculated Values 
+                        <span class="help-icon" onclick="showTooltip('calculated-values')" title="Click for detailed explanation">❓</span>
+                    </h3>
                     <div class="form-row calculated-field">
                         <label for="currentPayment">Monthly P&I Payment ($)</label>
                         <input type="text" id="currentPayment" readonly>
@@ -70,10 +69,27 @@
                         <input type="number" id="pmiPayment" step="10">
                         <small class="field-note">Calculated at 0.5% annually, or enter your actual PMI amount</small>
                     </div>
+                    <div class="form-row calculated-field">
+                        <label for="remainingPayments">Remaining Payments (Standard)</label>
+                        <input type="text" id="remainingPayments" readonly>
+                        <small class="field-note">Number of standard payments left without extra principal payments</small>
+                    </div>
+                    <div class="form-row calculated-field">
+                        <label for="remainingTerm">Remaining Term</label>
+                        <input type="text" id="remainingTerm" readonly>
+                        <small class="field-note">Time remaining on standard payment schedule (years and months)</small>
+                    </div>
+                    <div class="form-row calculated-field">
+                        <label for="calculatedPayoffDate">Standard Payoff Date</label>
+                        <input type="text" id="calculatedPayoffDate" readonly>
+                        <small class="field-note">When the loan would be fully paid off with standard payments</small>
+                    </div>
                 </div>
 
                 <div class="input-group">
-                    <h3>💰 Payment Info</h3>
+                    <h3>💰 Payment Info 
+                        <span class="help-icon" onclick="showTooltip('payment-info')" title="Click for detailed explanation">❓</span>
+                    </h3>
                     <div class="form-row">
                         <label for="extraPrincipal">Monthly Overpayment ($)</label>
                         <input type="number" id="extraPrincipal" value="0" step="50">
@@ -94,10 +110,18 @@
         </div>
 
         <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="calculation-methodology">
+                <h3>📋 Calculation Methodology 
+                    <span class="help-icon" onclick="showTooltip('methodology')" title="Click for detailed explanation">❓</span>
+                </h3>
+            </div>
+
             <div class="summary-cards">
                 <div class="summary-card payoff">
-                    <h3>🏠 Mortgage Payoff Strategy</h3>
-                    <p class="strategy-description">Pay loan off early to show potential savings</p>
+                    <h3>🏠 Mortgage Payoff Strategy 
+                        <span class="help-icon" onclick="showTooltip('payoff-strategy')" title="Click for detailed explanation">❓</span>
+                    </h3>
+                    <p class="strategy-description">Pay loan off early using extra principal payments. Shows total interest saved vs. standard payment schedule.</p>
                     <div class="metric">
                         <span class="label">Standard Payoff Date:</span>
                         <span class="value" id="standardPayoffSummary">-</span>
@@ -121,8 +145,10 @@
                 </div>
 
                 <div class="summary-card investment">
-                    <h3>📈 Hybrid Investment Strategy</h3>
-                    <p class="strategy-description">Pay loan off early, then invest freed payment amount for remaining loan term</p>
+                    <h3>📈 Hybrid Investment Strategy 
+                        <span class="help-icon" onclick="showTooltip('hybrid-strategy')" title="Click for detailed explanation">❓</span>
+                    </h3>
+                    <p class="strategy-description">Pay loan off early, then invest the total monthly payment amount (P&I + PMI + extra payments) for the remaining standard loan term.</p>
                     <div class="investment-scenarios">
                         <div class="scenario weak">
                             <span class="scenario-title">🐻 Weak (4%)</span>
@@ -140,8 +166,10 @@
                 </div>
 
                 <div class="summary-card pure-investment">
-                    <h3>📊 Pure Investment Strategy</h3>
-                    <p class="strategy-description">Invest extra principal amount for the full standard loan term period</p>
+                    <h3>📊 Pure Investment Strategy 
+                        <span class="help-icon" onclick="showTooltip('pure-investment')" title="Click for detailed explanation">❓</span>
+                    </h3>
+                    <p class="strategy-description">Instead of making extra mortgage payments, invest only the extra principal amount for the full standard loan term period.</p>
                     <div class="investment-scenarios">
                         <div class="scenario weak">
                             <span class="scenario-title">🐻 Weak (4%)</span>
@@ -197,14 +225,16 @@
                                 <td id="extraPrincipalAmount">-</td>
                             </tr>
                             <tr>
-                                <td>Loan Term</td>
+                                <td>Loan Maturity Date</td>
                                 <td id="standardTerm">-</td>
                                 <td id="extraTerm">-</td>
                                 <td id="termReduction">-</td>
                             </tr>
                             <tr>
-                                <td>Original Remaining Term</td>
-                                <td id="originalRemainingTerm" colspan="3">-</td>
+                                <td>Remaining Term</td>
+                                <td id="standardRemainingTerm">-</td>
+                                <td id="extraRemainingTerm">-</td>
+                                <td class="combined-savings">See above</td>
                             </tr>
                         </tbody>
                     </table>
@@ -212,8 +242,11 @@
             </div>
 
             <div class="payment-scenarios-section">
-                <h3>💸 Extra Payment Impact Scenarios</h3>
+                <h3>💸 Extra Payment Impact Scenarios 
+                    <span class="help-icon" onclick="showTooltip('scenarios')" title="Click for detailed explanation">❓</span>
+                </h3>
                 <p class="chart-subtitle">See how different extra payment amounts affect your payoff timeline and interest savings</p>
+                <p class="chart-note"><strong>Note:</strong> All scenarios include PMI (when applicable) and are compared against P&I-only baseline</p>
                 
                 <div class="scenarios-toggle">
                     <button id="monthlyToggle" class="toggle-btn active">📅 Monthly Extra</button>
@@ -239,7 +272,9 @@
             </div>
 
             <div class="biweekly-section">
-                <h3>📅 Bi-Weekly Payment Strategy</h3>
+                <h3>📅 Bi-Weekly Payment Strategy 
+                    <span class="help-icon" onclick="showTooltip('biweekly')" title="Click for detailed explanation">❓</span>
+                </h3>
                 <p class="chart-subtitle">Make your regular monthly P&I payment PLUS bi-weekly extra principal payments (26 extra payments per year)</p>
                 
                 <div class="biweekly-comparison">
@@ -333,6 +368,17 @@
                 <p class="chart-subtitle">Interest savings from early payoff + investment growth after mortgage is paid off</p>
                 <canvas id="comparisonChart"></canvas>
             </div>
+        </div>
+    </div>
+
+    <!-- Tooltip Modals -->
+    <div id="tooltip-modal" class="tooltip-modal" onclick="hideTooltip()">
+        <div class="tooltip-content" onclick="event.stopPropagation()">
+            <div class="tooltip-header">
+                <h4 id="tooltip-title"></h4>
+                <button class="tooltip-close" onclick="hideTooltip()">×</button>
+            </div>
+            <div id="tooltip-body"></div>
         </div>
     </div>
 
