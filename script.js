@@ -1382,6 +1382,380 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Tooltip functionality
+function showTooltip(type) {
+    try {
+        const modal = document.getElementById('tooltip-modal');
+        const title = document.getElementById('tooltip-title');
+        const body = document.getElementById('tooltip-body');
+        
+        // Get current values for calculations
+        const originalBalance = parseFloat(document.getElementById('originalBalance').value) || 0;
+        const remainingBalance = parseFloat(document.getElementById('remainingBalance').value) || 0;
+        const interestRate = parseFloat(document.getElementById('interestRate').value) || 0;
+        const homeValue = parseFloat(document.getElementById('homeValue').value) || 0;
+        const originalTerm = parseFloat(document.getElementById('originalTerm').value) || 0;
+        const loanStartDate = document.getElementById('loanStartDate').value;
+        const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
+        const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
+        
+        // Calculate some derived values
+        const monthlyRate = interestRate / 100 / 12;
+        const totalPayments = originalTerm * 12;
+        const monthlyPI = originalBalance > 0 && interestRate > 0 && originalTerm > 0 
+            ? calculateMonthlyPI(originalBalance, interestRate, originalTerm) 
+            : 0;
+        
+        // Use the actual PMI value from the field (whether calculated or manually entered)
+        const actualMonthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+        
+        // Calculate what the auto-calculated PMI would be for comparison
+        const originalLTV = originalBalance > 0 && homeValue > 0 ? (originalBalance / homeValue) * 100 : 0;
+        const autoCalculatedPMI = originalLTV > 80 ? (originalBalance * 0.005) / 12 : 0;
+        const pmiThreshold = homeValue * 0.8;
+        
+        // Check if PMI was manually entered
+        const pmiField = document.getElementById('pmiPayment');
+        const isManuallyEntered = pmiField.dataset.calculated !== 'true' && pmiField.value !== '';
+        
+        let content = '';
+        
+        switch(type) {
+        case 'mortgage-details':
+            title.textContent = '🏡 Mortgage Details - How Values Are Used';
+            content = `
+                <div class="calculation-section">
+                    <h5>📐 Monthly P&I Payment Formula</h5>
+                    <div class="formula">M = P × [r(1+r)ⁿ] / [(1+r)ⁿ-1]</div>
+                    <p><strong>Where:</strong></p>
+                    <ul>
+                        <li><strong>M</strong> = Monthly Payment</li>
+                        <li><strong>P</strong> = Principal (loan amount)</li>
+                        <li><strong>r</strong> = Monthly interest rate</li>
+                        <li><strong>n</strong> = Total number of payments</li>
+                    </ul>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>🏠 PMI Calculation</h5>
+                    <div class="formula">Monthly PMI = (Home Value × 0.005) ÷ 12</div>
+                    <p>PMI eliminates when: Remaining Balance ≤ 80% of Home Value</p>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Your Current Values:</h6>
+                    <ul class="value-list">
+                        <li><span>Original Loan Amount (P):</span> <strong>$${originalBalance.toLocaleString()}</strong></li>
+                        <li><span>Monthly Interest Rate (r):</span> <strong>${(monthlyRate * 100).toFixed(4)}%</strong></li>
+                        <li><span>Total Payments (n):</span> <strong>${totalPayments} months</strong></li>
+                        <li><span>Monthly P&I Payment:</span> <strong>$${monthlyPI.toLocaleString()}</strong></li>
+                        <li><span>Home Value:</span> <strong>$${homeValue.toLocaleString()}</strong></li>
+                        <li><span>PMI Elimination Threshold:</span> <strong>$${pmiThreshold.toLocaleString()}</strong></li>
+                        <li><span>Current Remaining Balance:</span> <strong>$${remainingBalance.toLocaleString()}</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+            
+        case 'calculated-values':
+            let startDate, monthsElapsed, remainingMonths;
+            
+            if (loanStartDate) {
+                startDate = new Date(loanStartDate + '-01');
+                const currentDate = new Date();
+                monthsElapsed = (currentDate.getFullYear() - startDate.getFullYear()) * 12 + 
+                                    (currentDate.getMonth() - startDate.getMonth());
+                remainingMonths = Math.max(0, totalPayments - monthsElapsed);
+            } else {
+                monthsElapsed = 0;
+                remainingMonths = totalPayments;
+            }
+            
+            title.textContent = '🔢 Calculated Values - Auto-Computation Details';
+            content = `
+                <div class="calculation-section">
+                    <h5>⏱️ Remaining Term Calculation</h5>
+                    <div class="formula">Remaining Term = (Original Term × 12) - Months Elapsed</div>
+                    <p>Months elapsed calculated from loan start date to current date.</p>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>💰 Monthly P&I Calculation</h5>
+                    <div class="formula">Uses original loan terms with mortgage payment formula</div>
+                    <p>Based on original loan amount, interest rate, and term - not current balance.</p>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>🏠 PMI Calculation</h5>
+                    <div class="formula">Auto-calculated: (Original Loan Amount × 0.5%) ÷ 12</div>
+                    <p>Auto-eliminates when balance drops to 80% of home value, but you can override with actual PMI.</p>
+                    <p><em>Current field shows: ${isManuallyEntered ? 'Manually entered value' : 'Auto-calculated value'}</em></p>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Your Calculated Values:</h6>
+                    <ul class="value-list">
+                        <li><span>Loan Start Date:</span> <strong>${loanStartDate || 'Not set'}</strong></li>
+                        <li><span>Months Elapsed:</span> <strong>${monthsElapsed} months</strong></li>
+                        <li><span>Remaining Term:</span> <strong>${remainingMonths} months (${(remainingMonths/12).toFixed(1)} years)</strong></li>
+                        <li><span>Monthly P&I Payment:</span> <strong>$${monthlyPI.toLocaleString()}</strong></li>
+                        <li><span>Original LTV:</span> <strong>${originalLTV.toFixed(1)}%</strong></li>
+                        <li><span>Current Monthly PMI:</span> <strong>$${actualMonthlyPMI.toLocaleString()}</strong></li>
+                        <li><span>Auto-calculated PMI would be:</span> <strong>$${Math.round(autoCalculatedPMI).toLocaleString()}</strong></li>
+                        <li><span>PMI Entry Type:</span> <strong>${isManuallyEntered ? 'Manual' : 'Auto-calculated'}</strong></li>
+                        <li><span>PMI Status:</span> <strong>${remainingBalance <= pmiThreshold ? 'Should eliminate when balance ≤ 80% LTV' : 'Active (LTV > 80%)'}</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+            
+        case 'payment-info':
+            title.textContent = '💰 Payment Info - Extra Payment Logic';
+            content = `
+                <div class="calculation-section">
+                    <h5>📅 Monthly Overpayment Processing</h5>
+                    <p>Applied directly to principal each month, reducing balance faster and shortening loan term.</p>
+                    <div class="formula">New Balance = Previous Balance - (Regular Principal + Extra Principal)</div>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>🎯 Annual Lump Sum Processing</h5>
+                    <p>Applied once per year in January as additional principal payment.</p>
+                    <div class="formula">January Balance = December Balance - Annual Lump Sum</div>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>🔄 PMI Reinvestment Feature</h5>
+                    <p>When PMI is eliminated (balance ≤ 80% LTV), former PMI payments automatically become additional principal.</p>
+                    <div class="formula">New Monthly Extra = Original Extra + Former PMI Payment</div>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Your Payment Settings:</h6>
+                    <ul class="value-list">
+                        <li><span>Monthly Overpayment:</span> <strong>$${extraPrincipal.toLocaleString()}</strong></li>
+                        <li><span>Annual Lump Sum:</span> <strong>$${annualBonus.toLocaleString()}</strong></li>
+                        <li><span>Current Monthly PMI:</span> <strong>$${actualMonthlyPMI.toLocaleString()}</strong></li>
+                        <li><span>PMI Reinvestment Benefit:</span> <strong>+$${actualMonthlyPMI.toLocaleString()}/month when eliminated</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+            
+        case 'methodology':
+            title.textContent = '📋 Calculation Methodology - Algorithm Overview';
+            content = `
+                <div class="calculation-section">
+                    <h5>🔄 Month-by-Month Simulation</h5>
+                    <p>The calculator runs detailed simulations for each scenario, processing each month individually.</p>
+                    <div class="formula">For each month: New Balance = Previous Balance - Principal Payment</div>
+                    <div class="formula">Interest Payment = Previous Balance × Monthly Rate</div>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>📈 Investment Growth Formulas</h5>
+                    <p><strong>Lump Sum Growth:</strong></p>
+                    <div class="formula">FV = PV × (1 + r)ⁿ</div>
+                    <p><strong>Regular Contributions (Annuity):</strong></p>
+                    <div class="formula">FV = PMT × [((1 + r)ⁿ - 1) ÷ r]</div>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>🏠 PMI Elimination Tracking</h5>
+                    <p>The calculator tracks balance vs. home value ratio each month.</p>
+                    <div class="formula">PMI Eliminates when: Balance ≤ (Home Value × 0.80)</div>
+                    <p>After elimination, former PMI payments automatically become extra principal.</p>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Your Simulation Parameters:</h6>
+                    <ul class="value-list">
+                        <li><span>Starting Balance:</span> <strong>$${remainingBalance.toLocaleString()}</strong></li>
+                        <li><span>Monthly Interest Rate:</span> <strong>${(monthlyRate * 100).toFixed(4)}%</strong></li>
+                        <li><span>Monthly P&I Payment:</span> <strong>$${monthlyPI.toLocaleString()}</strong></li>
+                        <li><span>Monthly PMI:</span> <strong>$${actualMonthlyPMI.toLocaleString()}</strong></li>
+                        <li><span>PMI Elimination Threshold:</span> <strong>$${pmiThreshold.toLocaleString()}</strong></li>
+                        <li><span>Simulation Length:</span> <strong>${originalTerm} years (${totalPayments} months)</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+            
+        case 'payoff-strategy':
+            title.textContent = '🏠 Mortgage Payoff Strategy - Calculation Details';
+            content = `
+                <div class="calculation-section">
+                    <h5>📊 Standard vs Accelerated Comparison</h5>
+                    <p>Compares standard payment schedule against accelerated payments with extra principal.</p>
+                    <div class="formula">Interest Saved = Standard Total Interest - Accelerated Total Interest</div>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>⚡ Acceleration Factors</h5>
+                    <p>Multiple factors accelerate payoff:</p>
+                    <ul>
+                        <li>Monthly extra principal payments</li>
+                        <li>Annual lump sum payments</li>
+                        <li>PMI reinvestment (when eliminated)</li>
+                    </ul>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Your Payoff Acceleration:</h6>
+                    <ul class="value-list">
+                        <li><span>Standard Monthly Payment:</span> <strong>$${(monthlyPI + actualMonthlyPMI).toLocaleString()}</strong></li>
+                        <li><span>Your Monthly Overpayment:</span> <strong>$${extraPrincipal.toLocaleString()}</strong></li>
+                        <li><span>Annual Lump Sum:</span> <strong>$${annualBonus.toLocaleString()}</strong></li>
+                        <li><span>Future PMI Reinvestment:</span> <strong>+$${actualMonthlyPMI.toLocaleString()}/month</strong></li>
+                        <li><span>Total Monthly Payment (after PMI ends):</span> <strong>$${(monthlyPI + extraPrincipal + actualMonthlyPMI).toLocaleString()}</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+            
+        case 'hybrid-strategy':
+            title.textContent = '📈 Hybrid Investment Strategy - Dual Benefit Calculation';
+            content = `
+                <div class="calculation-section">
+                    <h5>🎯 Two-Phase Strategy</h5>
+                    <p><strong>Phase 1:</strong> Accelerate mortgage payoff to save interest</p>
+                    <p><strong>Phase 2:</strong> Invest freed payment amount for remaining loan term</p>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>💰 Total Investment Amount</h5>
+                    <div class="formula">Monthly Investment = P&I + PMI + Extra Payments</div>
+                    <p>Invested from payoff date until original loan maturity date.</p>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>📈 Final Calculation</h5>
+                    <div class="formula">Total Benefit = Interest Saved + Investment Growth</div>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Your Hybrid Strategy:</h6>
+                    <ul class="value-list">
+                        <li><span>Monthly Investment Amount:</span> <strong>$${(monthlyPI + actualMonthlyPMI + extraPrincipal).toLocaleString()}</strong></li>
+                        <li><span>Investment Period:</span> <strong>From payoff until original maturity</strong></li>
+                        <li><span>Combined with Interest Savings:</span> <strong>Interest saved + compound growth</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+            
+        case 'pure-investment':
+            title.textContent = '📊 Pure Investment Strategy - Alternative Comparison';
+            content = `
+                <div class="calculation-section">
+                    <h5>💸 Investment vs Extra Payments</h5>
+                    <p>Instead of extra mortgage payments, invest the same amounts monthly.</p>
+                    <div class="formula">Monthly Investment = Extra Principal + Annual Bonus ÷ 12</div>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>⚖️ Net Calculation</h5>
+                    <div class="formula">Net Benefit = Investment Growth - Additional Interest Paid</div>
+                    <p>Since you're not paying extra principal, you pay more interest over the loan term.</p>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Your Investment Strategy:</h6>
+                    <ul class="value-list">
+                        <li><span>Monthly Investment:</span> <strong>$${(extraPrincipal + (annualBonus / 12)).toLocaleString()}</strong></li>
+                        <li><span>Investment Period:</span> <strong>${originalTerm} years (full loan term)</strong></li>
+                        <li><span>Trade-off:</span> <strong>Investment growth vs. extra interest paid</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+            
+        case 'scenarios':
+            title.textContent = '💸 Extra Payment Scenarios - Impact Analysis';
+            content = `
+                <div class="calculation-section">
+                    <h5>📊 Scenario Testing</h5>
+                    <p>Tests multiple extra payment amounts to show the impact curve.</p>
+                    <div class="formula">For each scenario: Run full mortgage simulation</div>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>📈 Percentage of P&I</h5>
+                    <p>Shows extra payments as percentage of your base P&I payment for easy comparison.</p>
+                    <div class="formula">Percentage = (Extra Payment ÷ Monthly P&I) × 100</div>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Your Base Values:</h6>
+                    <ul class="value-list">
+                        <li><span>Monthly P&I Payment:</span> <strong>$${monthlyPI.toLocaleString()}</strong></li>
+                        <li><span>Current Extra Payment:</span> <strong>$${extraPrincipal.toLocaleString()}</strong></li>
+                        <li><span>Current Percentage:</span> <strong>${extraPrincipal > 0 ? ((extraPrincipal / monthlyPI) * 100).toFixed(1) + '%' : '0%'}</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+            
+        case 'biweekly':
+            title.textContent = '📅 Bi-Weekly Strategy - Payment Frequency Impact';
+            content = `
+                <div class="calculation-section">
+                    <h5>🗓️ Payment Schedule</h5>
+                    <p>Bi-weekly payments create 26 payments per year (every 2 weeks).</p>
+                    <div class="formula">26 payments ÷ 12 months = 2.17 extra monthly payments/year</div>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>⚡ Acceleration Effect</h5>
+                    <p>The extra 2.17 payments significantly reduce principal and shorten loan term.</p>
+                    <div class="formula">Annual Extra = Bi-weekly Amount × 2.17</div>
+                </div>
+                
+                <div class="current-values">
+                    <h6>🔢 Bi-Weekly Impact:</h6>
+                    <ul class="value-list">
+                        <li><span>Payment Frequency:</span> <strong>Every 2 weeks (26/year)</strong></li>
+                        <li><span>Equivalent Extra Monthly:</span> <strong>2.17 payments/year</strong></li>
+                        <li><span>Your Current Extra:</span> <strong>$${extraPrincipal.toLocaleString()}/month</strong></li>
+                        <li><span>Bi-weekly Equivalent:</span> <strong>$${(extraPrincipal / 2.17).toLocaleString()} every 2 weeks</strong></li>
+                    </ul>
+                </div>
+            `;
+            break;
+    }
+    
+    body.innerHTML = content;
+    modal.classList.add('show');
+    } catch (error) {
+        console.error('Error showing tooltip for type:', type);
+        console.error('Error details:', error);
+        console.error('Values:', {
+            originalBalance,
+            remainingBalance,
+            interestRate,
+            homeValue,
+            originalTerm,
+            loanStartDate,
+            extraPrincipal,
+            annualBonus
+        });
+        
+        // Fallback - still show the modal with an error message
+        const modal = document.getElementById('tooltip-modal');
+        const title = document.getElementById('tooltip-title');
+        const body = document.getElementById('tooltip-body');
+        
+        title.textContent = 'Error Loading Explanation';
+        body.innerHTML = `<p>Sorry, there was an error loading the detailed explanation for "${type}". Check the console for details.</p>`;
+        modal.classList.add('show');
+    }
+}
+
+function hideTooltip() {
+    const modal = document.getElementById('tooltip-modal');
+    modal.classList.remove('show');
+}
+
 // Add some sample data on load for demo purposes
 window.addEventListener('load', function() {
     // The HTML already has sample values, so we don't need to set them again

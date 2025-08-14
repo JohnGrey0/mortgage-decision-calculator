@@ -20,7 +20,9 @@
         <div class="calculator-section">
             <div class="input-grid">
                 <div class="input-group">
-                    <h3>🏡 Mortgage Details</h3>
+                    <h3>🏡 Mortgage Details 
+                        <span class="help-icon" onclick="showTooltip('mortgage-details')" title="Click for detailed explanation">❓</span>
+                    </h3>
                     <div class="form-row">
                         <label for="originalBalance">Original Loan Amount ($)</label>
                         <input type="number" id="originalBalance" value="341910" step="1000">
@@ -54,7 +56,9 @@
                 </div>
 
                 <div class="input-group">
-                    <h3>🔢 Calculated Values</h3>
+                    <h3>🔢 Calculated Values 
+                        <span class="help-icon" onclick="showTooltip('calculated-values')" title="Click for detailed explanation">❓</span>
+                    </h3>
                     <div class="form-row calculated-field">
                         <label for="remainingTerm">Remaining Term</label>
                         <input type="text" id="remainingTerm" readonly>
@@ -73,7 +77,9 @@
                 </div>
 
                 <div class="input-group">
-                    <h3>💰 Payment Info</h3>
+                    <h3>💰 Payment Info 
+                        <span class="help-icon" onclick="showTooltip('payment-info')" title="Click for detailed explanation">❓</span>
+                    </h3>
                     <div class="form-row">
                         <label for="extraPrincipal">Monthly Overpayment ($)</label>
                         <input type="number" id="extraPrincipal" value="0" step="50">
@@ -94,10 +100,18 @@
         </div>
 
         <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="calculation-methodology">
+                <h3>📋 Calculation Methodology 
+                    <span class="help-icon" onclick="showTooltip('methodology')" title="Click for detailed explanation">❓</span>
+                </h3>
+            </div>
+
             <div class="summary-cards">
                 <div class="summary-card payoff">
-                    <h3>🏠 Mortgage Payoff Strategy</h3>
-                    <p class="strategy-description">Pay loan off early to show potential savings</p>
+                    <h3>🏠 Mortgage Payoff Strategy 
+                        <span class="help-icon" onclick="showTooltip('payoff-strategy')" title="Click for detailed explanation">❓</span>
+                    </h3>
+                    <p class="strategy-description">Pay loan off early using extra principal payments. Shows total interest saved vs. standard payment schedule.</p>
                     <div class="metric">
                         <span class="label">Standard Payoff Date:</span>
                         <span class="value" id="standardPayoffSummary">-</span>
@@ -121,8 +135,10 @@
                 </div>
 
                 <div class="summary-card investment">
-                    <h3>📈 Hybrid Investment Strategy</h3>
-                    <p class="strategy-description">Pay loan off early, then invest freed payment amount for remaining loan term</p>
+                    <h3>📈 Hybrid Investment Strategy 
+                        <span class="help-icon" onclick="showTooltip('hybrid-strategy')" title="Click for detailed explanation">❓</span>
+                    </h3>
+                    <p class="strategy-description">Pay loan off early, then invest the total monthly payment amount (P&I + PMI + extra payments) for the remaining standard loan term.</p>
                     <div class="investment-scenarios">
                         <div class="scenario weak">
                             <span class="scenario-title">🐻 Weak (4%)</span>
@@ -140,8 +156,10 @@
                 </div>
 
                 <div class="summary-card pure-investment">
-                    <h3>📊 Pure Investment Strategy</h3>
-                    <p class="strategy-description">Invest extra principal amount for the full standard loan term period</p>
+                    <h3>📊 Pure Investment Strategy 
+                        <span class="help-icon" onclick="showTooltip('pure-investment')" title="Click for detailed explanation">❓</span>
+                    </h3>
+                    <p class="strategy-description">Instead of making extra mortgage payments, invest only the extra principal amount for the full standard loan term period.</p>
                     <div class="investment-scenarios">
                         <div class="scenario weak">
                             <span class="scenario-title">🐻 Weak (4%)</span>
@@ -212,7 +230,9 @@
             </div>
 
             <div class="payment-scenarios-section">
-                <h3>💸 Extra Payment Impact Scenarios</h3>
+                <h3>💸 Extra Payment Impact Scenarios 
+                    <span class="help-icon" onclick="showTooltip('scenarios')" title="Click for detailed explanation">❓</span>
+                </h3>
                 <p class="chart-subtitle">See how different extra payment amounts affect your payoff timeline and interest savings</p>
                 
                 <div class="scenarios-toggle">
@@ -239,7 +259,9 @@
             </div>
 
             <div class="biweekly-section">
-                <h3>📅 Bi-Weekly Payment Strategy</h3>
+                <h3>📅 Bi-Weekly Payment Strategy 
+                    <span class="help-icon" onclick="showTooltip('biweekly')" title="Click for detailed explanation">❓</span>
+                </h3>
                 <p class="chart-subtitle">Make your regular monthly P&I payment PLUS bi-weekly extra principal payments (26 extra payments per year)</p>
                 
                 <div class="biweekly-comparison">
@@ -333,6 +355,17 @@
                 <p class="chart-subtitle">Interest savings from early payoff + investment growth after mortgage is paid off</p>
                 <canvas id="comparisonChart"></canvas>
             </div>
+        </div>
+    </div>
+
+    <!-- Tooltip Modals -->
+    <div id="tooltip-modal" class="tooltip-modal" onclick="hideTooltip()">
+        <div class="tooltip-content" onclick="event.stopPropagation()">
+            <div class="tooltip-header">
+                <h4 id="tooltip-title"></h4>
+                <button class="tooltip-close" onclick="hideTooltip()">×</button>
+            </div>
+            <div id="tooltip-body"></div>
         </div>
     </div>
 
