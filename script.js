@@ -1187,7 +1187,15 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
     const baselinePayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, 0);
     
     // Payment amounts to test
-    const paymentAmounts = [20, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 3000];
+    let paymentAmounts = [20, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 3000];
+    
+    // Add current extra principal if it's not already in the list and is greater than 0
+    if (currentExtraPrincipal > 0 && !paymentAmounts.includes(currentExtraPrincipal)) {
+        paymentAmounts.push(currentExtraPrincipal);
+    }
+    
+    // Sort the payment amounts in ascending order
+    paymentAmounts.sort((a, b) => a - b);
     
     paymentAmounts.forEach(extraAmount => {
         const payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, extraAmount);
@@ -1203,8 +1211,13 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
         
         // Create row
         const row = document.createElement('tr');
+        const isCurrentPayment = extraAmount === currentExtraPrincipal;
+        const extraPaymentDisplay = isCurrentPayment ? 
+            `+$${extraAmount.toLocaleString()} 👈 YOUR PAYMENT` : 
+            `+$${extraAmount.toLocaleString()}`;
+            
         row.innerHTML = `
-            <td>+$${extraAmount.toLocaleString()}</td>
+            <td>${extraPaymentDisplay}</td>
             <td>${percentageOfPI}%</td>
             <td>$${(monthlyPI + extraAmount).toFixed(0)}</td>
             <td>${formatTime(payoff.monthsToPayoff)}</td>
@@ -1213,7 +1226,7 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
         `;
         
         // Highlight current extra payment amount
-        if (extraAmount === currentExtraPrincipal) {
+        if (isCurrentPayment) {
             row.classList.add('current-payment');
         }
         
