@@ -647,6 +647,162 @@ header h1 {
     font-weight: 600;
 }
 
+/* Bi-Weekly Payment Section */
+.biweekly-section {
+    margin: 3rem 0;
+    background: var(--card-color);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+}
+
+.biweekly-section h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    color: var(--primary-color);
+    text-align: center;
+}
+
+.biweekly-comparison {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 2rem;
+    align-items: center;
+    margin: 2rem 0;
+}
+
+.payment-strategy {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 2px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.payment-strategy:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+}
+
+.monthly-strategy {
+    border-left: 4px solid var(--warning-color);
+}
+
+.biweekly-strategy {
+    border-left: 4px solid var(--success-color);
+}
+
+.payment-strategy h4 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.strategy-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-item .label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.detail-item .value {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: 'Courier New', monospace;
+}
+
+.vs-divider {
+    background: var(--primary-color);
+    color: white;
+    padding: 1rem;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 1.2rem;
+    text-align: center;
+    min-width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+}
+
+.biweekly-savings {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid var(--success-color);
+    margin-top: 2rem;
+}
+
+.biweekly-savings h4 {
+    color: var(--success-color);
+    margin-bottom: 1rem;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.savings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.savings-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1rem;
+    background: var(--card-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.savings-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.savings-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+}
+
+.time-savings .savings-value {
+    color: var(--success-color);
+}
+
+.interest-savings .savings-value {
+    color: var(--primary-color);
+}
+
+.extra-payment .savings-value {
+    color: var(--warning-color);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .container {
@@ -688,6 +844,29 @@ header h1 {
     }
     
     .comparison-table td:not(:first-child) {
+        font-size: 0.8rem;
+    }
+    
+    .biweekly-comparison {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .vs-divider {
+        order: -1;
+        margin: 1rem auto;
+    }
+    
+    .savings-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .payment-strategy {
+        padding: 1rem;
+    }
+    
+    .scenarios-table-container {
         font-size: 0.8rem;
     }
 }

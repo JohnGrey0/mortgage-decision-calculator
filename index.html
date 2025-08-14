@@ -235,6 +235,85 @@
                 </div>
             </div>
 
+            <div class="biweekly-section">
+                <h3>📅 Bi-Weekly Payment Strategy</h3>
+                <p class="chart-subtitle">Make your regular monthly P&I payment PLUS bi-weekly extra principal payments (26 extra payments per year)</p>
+                
+                <div class="biweekly-comparison">
+                    <div class="payment-strategy monthly-strategy">
+                        <h4>🗓️ Monthly Payments</h4>
+                        <div class="strategy-details">
+                            <div class="detail-item">
+                                <span class="label">Payment Frequency:</span>
+                                <span class="value" id="monthlyFrequency">12 payments/year</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Monthly Payment:</span>
+                                <span class="value" id="monthlyPaymentAmount">$0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Annual Payment:</span>
+                                <span class="value" id="monthlyAnnualTotal">$0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Payoff Time:</span>
+                                <span class="value" id="monthlyPayoffTime">0 years</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Total Interest:</span>
+                                <span class="value" id="monthlyTotalInterest">$0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vs-divider">VS</div>
+
+                    <div class="payment-strategy biweekly-strategy">
+                        <h4>📋 Bi-Weekly Extra Payments</h4>
+                        <div class="strategy-details">
+                            <div class="detail-item">
+                                <span class="label">Payment Frequency:</span>
+                                <span class="value" id="biweeklyFrequency">Monthly P&I + 26 extra/year</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Payment Structure:</span>
+                                <span class="value" id="biweeklyPaymentAmount">$0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Annual Payment:</span>
+                                <span class="value" id="biweeklyAnnualTotal">$0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Payoff Time:</span>
+                                <span class="value" id="biweeklyPayoffTime">0 years</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Total Interest:</span>
+                                <span class="value" id="biweeklyTotalInterest">$0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="biweekly-savings">
+                    <h4>💰 Bi-Weekly Savings Summary</h4>
+                    <div class="savings-grid">
+                        <div class="savings-item time-savings">
+                            <span class="savings-label">Time Saved:</span>
+                            <span class="savings-value" id="biweeklyTimeSaved">0 years</span>
+                        </div>
+                        <div class="savings-item interest-savings">
+                            <span class="savings-label">Interest Saved:</span>
+                            <span class="savings-value" id="biweeklyInterestSaved">$0</span>
+                        </div>
+                        <div class="savings-item extra-payment">
+                            <span class="savings-label">Additional Bi-Weekly Impact:</span>
+                            <span class="savings-value" id="biweeklyEquivalentExtra">$0/month</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="chart-container">
                 <h3>📊 Balance Projection Over Time</h3>
                 <canvas id="balanceChart"></canvas>

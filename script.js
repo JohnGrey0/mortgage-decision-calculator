@@ -410,6 +410,9 @@ function calculate() {
     // Update payment scenarios table
     updatePaymentScenariosTable(remainingBalance, interestRate, window.exactRemainingMonths);
     
+    // Update bi-weekly comparison
+    updateBiweeklyComparison(remainingBalance, interestRate, window.exactRemainingMonths, currentPayment, extraPrincipal);
+    
     // Create charts
     createBalanceChart(standardPayoff, acceleratedPayoff);
     createStrategyChart(acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment);
@@ -1232,6 +1235,57 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
         
         scenariosBody.appendChild(row);
     });
+}
+
+function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermMonths, currentPayment, extraPrincipal) {
+    // Calculate monthly payment details
+    const monthlyRate = interestRate / 100 / 12;
+    const monthlyPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingTermMonths)) / 
+                     (Math.pow(1 + monthlyRate, remainingTermMonths) - 1);
+    
+    // Use current payment or calculated P&I
+    const actualMonthlyPayment = currentPayment || monthlyPI;
+    
+    // Calculate monthly scenario WITH user's extra payment
+    const monthlyPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, extraPrincipal, 0, actualMonthlyPayment);
+    
+    // Bi-weekly strategy: 
+    // - Keep monthly P&I payment as required by lender
+    // - Replace monthly extra with bi-weekly extra payments (26 payments per year)
+    // - Each bi-weekly extra payment should be half of user's monthly extra (or half of P&I if no extra)
+    const biweeklyExtraPayment = extraPrincipal > 0 ? extraPrincipal / 2 : actualMonthlyPayment / 2;
+    const biweeklyExtraAnnual = biweeklyExtraPayment * 26; // 26 bi-weekly payments
+    const monthlyEquivalentExtra = biweeklyExtraAnnual / 12; // Convert bi-weekly extra to monthly equivalent
+    
+    // Calculate bi-weekly scenario (monthly P&I + equivalent monthly extra from bi-weekly payments, NO monthly extra)
+    const biweeklyPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, monthlyEquivalentExtra, 0, actualMonthlyPayment);
+    
+    // Update monthly strategy display (WITH user's extra payment)
+    const totalMonthlyPayment = actualMonthlyPayment + extraPrincipal;
+    document.getElementById('monthlyPaymentAmount').textContent = extraPrincipal > 0 ? 
+        `${formatCurrency(actualMonthlyPayment)} + ${formatCurrency(extraPrincipal)} extra` : 
+        formatCurrency(actualMonthlyPayment);
+    document.getElementById('monthlyAnnualTotal').textContent = formatCurrency(totalMonthlyPayment * 12);
+    document.getElementById('monthlyPayoffTime').textContent = formatTime(monthlyPayoff.monthsToPayoff);
+    document.getElementById('monthlyTotalInterest').textContent = formatCurrency(monthlyPayoff.totalInterest);
+    
+    // Update bi-weekly strategy display
+    const totalBiweeklyAnnual = (actualMonthlyPayment * 12) + biweeklyExtraAnnual; // P&I + bi-weekly extra (no monthly extra)
+    const biweeklyDescription = `${formatCurrency(actualMonthlyPayment)} + ${formatCurrency(biweeklyExtraPayment)} bi-weekly`;
+    
+    document.getElementById('biweeklyPaymentAmount').textContent = biweeklyDescription;
+    document.getElementById('biweeklyAnnualTotal').textContent = formatCurrency(totalBiweeklyAnnual);
+    document.getElementById('biweeklyPayoffTime').textContent = formatTime(biweeklyPayoff.monthsToPayoff);
+    document.getElementById('biweeklyTotalInterest').textContent = formatCurrency(biweeklyPayoff.totalInterest);
+    
+    // Calculate savings (bi-weekly vs monthly with extra)
+    const timeSaved = monthlyPayoff.monthsToPayoff - biweeklyPayoff.monthsToPayoff;
+    const interestSaved = monthlyPayoff.totalInterest - biweeklyPayoff.totalInterest;
+    
+    // Update savings display
+    document.getElementById('biweeklyTimeSaved').textContent = formatTime(timeSaved);
+    document.getElementById('biweeklyInterestSaved').textContent = formatCurrency(interestSaved);
+    document.getElementById('biweeklyEquivalentExtra').textContent = formatCurrency(biweeklyExtraAnnual / 12);
 }
 
 // Add input event listeners for real-time validation
