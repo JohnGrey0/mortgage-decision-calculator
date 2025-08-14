@@ -83,14 +83,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update P&I verification when relevant fields change
     const originalBalanceField = document.getElementById('originalBalance');
     const originalTermField = document.getElementById('originalTerm');
+    const homeValueField = document.getElementById('homeValue');
+    const pmiField = document.getElementById('pmiPayment');
     
     if (originalBalanceField && interestRate && originalTermField) {
-        originalBalanceField.addEventListener('input', updatePIVerificationCard);
+        originalBalanceField.addEventListener('input', () => {
+            updatePIVerificationCard();
+            calculatePMI();
+        });
         interestRate.addEventListener('input', updatePIVerificationCard);
         originalTermField.addEventListener('input', updatePIVerificationCard);
         
         // Initial calculation (but don't show insight note until after calculations)
         updatePIVerificationCard();
+        calculatePMI();
+    }
+    
+    // Add PMI calculation listeners
+    if (homeValueField && originalBalanceField) {
+        homeValueField.addEventListener('input', calculatePMI);
+    }
+    
+    // Mark PMI as manually entered when user types in it
+    if (pmiField) {
+        pmiField.addEventListener('input', function() {
+            if (this.value !== '') {
+                this.dataset.calculated = 'false';
+            }
+        });
     }
 });
 
@@ -131,7 +151,7 @@ function updateChartTheme(chart) {
 }
 
 // Mortgage calculation functions
-function calculateMortgagePayoff(principal, rate, term, extraPayment = 0, annualBonus = 0, userMonthlyPayment = null) {
+function calculateMortgagePayoff(principal, rate, term, extraPayment = 0, annualBonus = 0, userMonthlyPayment = null, homeValue = null, monthlyPMI = 0) {
     const monthlyRate = rate / 100 / 12;
     
     // Use exact remaining months if available (from date calculation), otherwise convert years to months
@@ -149,14 +169,36 @@ function calculateMortgagePayoff(principal, rate, term, extraPayment = 0, annual
     let totalPaid = 0;
     let month = 0;
     let totalBonusApplied = 0;
+    let totalPMIPaid = 0;
+    let pmiEliminated = false;
+    let pmiEliminationMonth = null;
     const payoffSchedule = [];
+    
+    // Calculate 80% LTV threshold for PMI elimination
+    const pmiEliminationBalance = homeValue ? homeValue * 0.8 : 0;
     
     while (balance > 0.01 && month < numberOfPayments * 2) {
         const interestPayment = balance * monthlyRate;
         let principalPayment = monthlyPayment - interestPayment;
         
+        // Check if PMI should be eliminated this month (80% LTV reached)
+        let currentMonthlyPMI = 0;
+        if (monthlyPMI > 0 && homeValue && !pmiEliminated) {
+            if (balance <= pmiEliminationBalance) {
+                pmiEliminated = true;
+                pmiEliminationMonth = month + 1;
+            } else {
+                currentMonthlyPMI = monthlyPMI;
+            }
+        }
+        
         // Add monthly extra payment to principal
         let totalPrincipalPayment = principalPayment + extraPayment;
+        
+        // If PMI was eliminated this month or earlier, redirect PMI savings to principal
+        if (pmiEliminated && monthlyPMI > 0) {
+            totalPrincipalPayment += monthlyPMI; // Add former PMI payment as extra principal
+        }
         
         // Apply annual bonus at the beginning of each year (month 12, 24, 36, etc.)
         let bonusThisMonth = 0;
@@ -175,12 +217,13 @@ function calculateMortgagePayoff(principal, rate, term, extraPayment = 0, annual
             if (principalPayment < 0) principalPayment = 0;
         }
         
-        // Calculate actual payment amount for this month
-        const thisMonthPayment = interestPayment + totalPrincipalPayment;
+        // Calculate actual payment amount for this month (including PMI)
+        const thisMonthPayment = interestPayment + totalPrincipalPayment + currentMonthlyPMI;
         
         balance -= totalPrincipalPayment;
         totalInterest += interestPayment;
         totalPaid += thisMonthPayment;
+        totalPMIPaid += currentMonthlyPMI;
         
         payoffSchedule.push({
             month: month + 1,
@@ -189,7 +232,9 @@ function calculateMortgagePayoff(principal, rate, term, extraPayment = 0, annual
             principalPayment: totalPrincipalPayment,
             totalInterest,
             paymentAmount: thisMonthPayment,
-            bonusApplied: bonusThisMonth
+            bonusApplied: bonusThisMonth,
+            pmiPayment: currentMonthlyPMI,
+            pmiEliminated: pmiEliminated && currentMonthlyPMI === 0
         });
         
         month++;
@@ -201,6 +246,8 @@ function calculateMortgagePayoff(principal, rate, term, extraPayment = 0, annual
         totalPaid,
         monthlyPayment,
         totalBonusApplied,
+        totalPMIPaid,
+        pmiEliminationMonth,
         schedule: payoffSchedule
     };
 }
@@ -330,6 +377,33 @@ function formatPayoffDate(monthsFromNow) {
     });
 }
 
+function calculatePMI() {
+    const originalBalance = parseFloat(document.getElementById('originalBalance').value);
+    const homeValue = parseFloat(document.getElementById('homeValue').value);
+    const pmiField = document.getElementById('pmiPayment');
+    
+    if (isNaN(originalBalance) || isNaN(homeValue) || originalBalance <= 0 || homeValue <= 0) {
+        pmiField.value = '';
+        return;
+    }
+    
+    // Calculate current LTV
+    const currentLTV = (originalBalance / homeValue) * 100;
+    
+    // Only calculate PMI if LTV > 80% and field is empty (not manually entered)
+    if (currentLTV > 80 && (pmiField.value === '' || pmiField.dataset.calculated === 'true')) {
+        // Use 0.5% annual rate as default
+        const annualPMI = originalBalance * 0.005;
+        const monthlyPMI = annualPMI / 12;
+        pmiField.value = monthlyPMI.toFixed(0);
+        pmiField.dataset.calculated = 'true';
+    } else if (currentLTV <= 80) {
+        // No PMI needed if LTV is 80% or below
+        pmiField.value = '0';
+        pmiField.dataset.calculated = 'true';
+    }
+}
+
 function calculate() {
     const button = document.querySelector('.calculate-btn');
     button.classList.add('loading');
@@ -343,6 +417,8 @@ function calculate() {
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const originalTerm = parseFloat(document.getElementById('originalTerm').value);
     const remainingTerm = calculateRemainingTerm(); // Get calculated remaining term in years
+    const homeValue = parseFloat(document.getElementById('homeValue').value) || 0;
+    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
     const taxRate = 20; // Hardcoded 20% capital gains tax rate
     
     // Validate inputs
@@ -354,9 +430,9 @@ function calculate() {
         return;
     }
     
-    // Calculate mortgage scenarios using calculated P&I payment
-    const standardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0, 0, currentPayment);
-    const acceleratedPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, extraPrincipal, annualBonus, currentPayment);
+    // Calculate mortgage scenarios using calculated P&I payment (including PMI)
+    const standardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0, 0, currentPayment, homeValue, monthlyPMI);
+    const acceleratedPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, extraPrincipal, annualBonus, currentPayment, homeValue, monthlyPMI);
     
     // Store for P&I verification note
     window.lastStandardPayoffMonths = standardPayoff.monthsToPayoff;
