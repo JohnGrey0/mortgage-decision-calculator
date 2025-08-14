@@ -1206,8 +1206,8 @@ function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermM
     // Bi-weekly strategy: 
     // - Keep monthly P&I payment as required by lender
     // - Replace monthly extra with bi-weekly extra payments (26 payments per year)
-    // - Each bi-weekly extra payment should be half of user's monthly extra (or half of P&I if no extra)
-    const biweeklyExtraPayment = extraPrincipal > 0 ? extraPrincipal / 2 : actualMonthlyPayment / 2;
+    // - Each bi-weekly extra payment should be half of user's monthly extra
+    const biweeklyExtraPayment = extraPrincipal / 2; // Half of monthly extra, or $0 if no extra
     const biweeklyExtraAnnual = biweeklyExtraPayment * 26; // 26 bi-weekly payments
     const monthlyEquivalentExtra = biweeklyExtraAnnual / 12; // Convert bi-weekly extra to monthly equivalent
     
@@ -1225,7 +1225,9 @@ function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermM
     
     // Update bi-weekly strategy display
     const totalBiweeklyAnnual = (actualMonthlyPayment * 12) + biweeklyExtraAnnual; // P&I + bi-weekly extra (no monthly extra)
-    const biweeklyDescription = `${formatCurrency(actualMonthlyPayment)} + ${formatCurrency(biweeklyExtraPayment)} bi-weekly`;
+    const biweeklyDescription = biweeklyExtraPayment > 0 ? 
+        `${formatCurrency(actualMonthlyPayment)} + ${formatCurrency(biweeklyExtraPayment)} bi-weekly` :
+        formatCurrency(actualMonthlyPayment);
     
     document.getElementById('biweeklyPaymentAmount').textContent = biweeklyDescription;
     document.getElementById('biweeklyAnnualTotal').textContent = formatCurrency(totalBiweeklyAnnual);
