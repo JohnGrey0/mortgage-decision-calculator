@@ -1125,8 +1125,8 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
     // Calculate baseline (no extra payments) using user's P&I
     const baselinePayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, 0, 0, monthlyPI);
     
-    // Payment amounts to test
-    let paymentAmounts = [20, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 3000];
+    // Payment amounts to test (including $0 for "do nothing" scenario)
+    let paymentAmounts = [0, 20, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 3000];
     
     // Add current extra principal if it's not already in the list and is greater than 0
     if (currentExtraPrincipal > 0 && !paymentAmounts.includes(currentExtraPrincipal)) {
