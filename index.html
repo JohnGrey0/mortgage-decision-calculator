@@ -60,11 +60,6 @@
                         <span class="help-icon" onclick="showTooltip('calculated-values')" title="Click for detailed explanation">❓</span>
                     </h3>
                     <div class="form-row calculated-field">
-                        <label for="remainingTerm">Remaining Term</label>
-                        <input type="text" id="remainingTerm" readonly>
-                        <small class="field-note">Automatically calculated from start date and original term</small>
-                    </div>
-                    <div class="form-row calculated-field">
                         <label for="currentPayment">Monthly P&I Payment ($)</label>
                         <input type="text" id="currentPayment" readonly>
                         <small class="field-note">Automatically calculated from loan terms (Principal + Interest only)</small>
@@ -73,6 +68,21 @@
                         <label for="pmiPayment">Monthly PMI ($)</label>
                         <input type="number" id="pmiPayment" step="10">
                         <small class="field-note">Calculated at 0.5% annually, or enter your actual PMI amount</small>
+                    </div>
+                    <div class="form-row calculated-field">
+                        <label for="remainingPayments">Remaining Payments (Standard)</label>
+                        <input type="text" id="remainingPayments" readonly>
+                        <small class="field-note">Number of standard payments left without extra principal payments</small>
+                    </div>
+                    <div class="form-row calculated-field">
+                        <label for="remainingTerm">Remaining Term</label>
+                        <input type="text" id="remainingTerm" readonly>
+                        <small class="field-note">Time remaining on standard payment schedule (years and months)</small>
+                    </div>
+                    <div class="form-row calculated-field">
+                        <label for="calculatedPayoffDate">Standard Payoff Date</label>
+                        <input type="text" id="calculatedPayoffDate" readonly>
+                        <small class="field-note">When the loan would be fully paid off with standard payments</small>
                     </div>
                 </div>
 
@@ -215,14 +225,16 @@
                                 <td id="extraPrincipalAmount">-</td>
                             </tr>
                             <tr>
-                                <td>Loan Term</td>
+                                <td>Loan Maturity Date</td>
                                 <td id="standardTerm">-</td>
                                 <td id="extraTerm">-</td>
                                 <td id="termReduction">-</td>
                             </tr>
                             <tr>
-                                <td>Original Remaining Term</td>
-                                <td id="originalRemainingTerm" colspan="3">-</td>
+                                <td>Remaining Term</td>
+                                <td id="standardRemainingTerm">-</td>
+                                <td id="extraRemainingTerm">-</td>
+                                <td class="combined-savings">See above</td>
                             </tr>
                         </tbody>
                     </table>
@@ -234,6 +246,7 @@
                     <span class="help-icon" onclick="showTooltip('scenarios')" title="Click for detailed explanation">❓</span>
                 </h3>
                 <p class="chart-subtitle">See how different extra payment amounts affect your payoff timeline and interest savings</p>
+                <p class="chart-note"><strong>Note:</strong> All scenarios include PMI (when applicable) and are compared against P&I-only baseline</p>
                 
                 <div class="scenarios-toggle">
                     <button id="monthlyToggle" class="toggle-btn active">📅 Monthly Extra</button>

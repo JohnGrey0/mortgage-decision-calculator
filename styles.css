@@ -625,6 +625,17 @@ header h1 .title-text {
     text-align: center;
 }
 
+.chart-note {
+    margin: 0.5rem 0 1.5rem 0;
+    font-size: 0.85rem;
+    color: var(--accent-color);
+    text-align: center;
+    background: var(--background-secondary);
+    padding: 0.75rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-color);
+}
+
 .chart-container canvas {
     max-height: 400px;
 }
@@ -697,6 +708,8 @@ header h1 .title-text {
 .savings-column {
     color: var(--primary-color);
     font-weight: 700;
+    border-left: 2px solid var(--border-color);
+    position: relative;
 }
 
 .comparison-table td {
@@ -713,7 +726,13 @@ header h1 .title-text {
     font-size: 0.9rem;
 }
 
-#originalRemainingTerm {
+/* Add border to savings column data cells */
+.comparison-table td:last-child {
+    border-left: 2px solid var(--border-color);
+}
+
+/* Style for combined savings reference */
+.combined-savings {
     font-style: italic;
     color: var(--text-secondary);
     text-align: center;

@@ -55,6 +55,12 @@ function calculateRemainingTerm() {
     }
     
     document.getElementById('remainingTerm').value = displayText;
+    document.getElementById('remainingPayments').value = `${remainingMonths} payments`;
+    
+    // Calculate and display the standard payoff date
+    const standardPayoffDate = formatPayoffDate(remainingMonths);
+    document.getElementById('calculatedPayoffDate').value = standardPayoffDate;
+    
     return remainingYears;
 }
 
@@ -430,11 +436,14 @@ function calculate() {
         return;
     }
     
-    // Calculate mortgage scenarios using calculated P&I payment (including PMI)
-    const standardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0, 0, currentPayment, homeValue, monthlyPMI);
+    // Calculate mortgage scenarios using calculated P&I payment
+    // Standard: P&I only (no PMI)
+    // Accelerated: P&I + PMI + extra principal + annual bonus
+    const standardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0, 0, currentPayment, homeValue, 0);
     const acceleratedPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, extraPrincipal, annualBonus, currentPayment, homeValue, monthlyPMI);
     
-    // Store for P&I verification note
+    // Store for scenarios table to use the exact same baseline
+    window.lastStandardPayoff = standardPayoff;
     window.lastStandardPayoffMonths = standardPayoff.monthsToPayoff;
     
     // Calculate interest savings and add to accelerated payoff object
@@ -457,12 +466,15 @@ function calculate() {
     updateComparisonTable(standardPayoff, acceleratedPayoff, extraPrincipal, annualBonus);
     
     // Update payment scenarios table
+    // Calculate the proper P&I for scenarios (based on original loan terms)
+    const scenariosPI = calculateMonthlyPI(originalBalance, interestRate, originalTerm);
+    
     // Store data for toggle functionality
     window.lastScenariosData = {
         remainingBalance: remainingBalance,
         interestRate: interestRate,
         remainingTermMonths: window.exactRemainingMonths,
-        currentPayment: currentPayment
+        currentPayment: scenariosPI
     };
     
     // Determine current mode based on active toggle
@@ -470,10 +482,10 @@ function calculate() {
                             document.getElementById('biweeklyToggle').classList.contains('active');
     const mode = isbiweeklyActive ? 'biweekly' : 'monthly';
     
-    updatePaymentScenariosTable(remainingBalance, interestRate, window.exactRemainingMonths, mode, currentPayment);
+    updatePaymentScenariosTable(remainingBalance, interestRate, window.exactRemainingMonths, mode, scenariosPI);
     
     // Update bi-weekly comparison
-    updateBiweeklyComparison(remainingBalance, interestRate, window.exactRemainingMonths, currentPayment, extraPrincipal);
+    updateBiweeklyComparison(remainingBalance, interestRate, window.exactRemainingMonths, scenariosPI, extraPrincipal);
     
     // Create charts
     createBalanceChart(standardPayoff, acceleratedPayoff);
@@ -589,15 +601,15 @@ function updateComparisonTable(standard, accelerated, extraPrincipal, annualBonu
         year: 'numeric', 
         month: 'long' 
     });
-    document.getElementById('timeSavedDetailed').textContent = formatTime(timeSaved);
+    document.getElementById('timeSavedDetailed').textContent = '+' + formatTime(timeSaved);
     
     document.getElementById('standardTotalInterest').textContent = formatCurrency(standard.totalInterest);
     document.getElementById('extraTotalInterest').textContent = formatCurrency(accelerated.totalInterest);
-    document.getElementById('interestSavedDetailed').textContent = formatCurrency(interestSaved);
+    document.getElementById('interestSavedDetailed').textContent = '+' + formatCurrency(interestSaved);
     
     document.getElementById('standardTotalPaid').textContent = formatCurrency(standard.totalPaid);
     document.getElementById('extraTotalPaidDetailed').textContent = formatCurrency(accelerated.totalPaid);
-    document.getElementById('totalSavedDetailed').textContent = formatCurrency(totalSaved);
+    document.getElementById('totalSavedDetailed').textContent = '+' + formatCurrency(totalSaved);
     
     document.getElementById('standardMonthlyPI').textContent = formatCurrency(standard.monthlyPayment);
     
@@ -615,11 +627,12 @@ function updateComparisonTable(standard, accelerated, extraPrincipal, annualBonu
     // Update payoff times to show actual dates instead of time periods
     document.getElementById('standardTerm').textContent = formatPayoffDate(standard.monthsToPayoff);
     document.getElementById('extraTerm').textContent = formatPayoffDate(accelerated.monthsToPayoff);
-    document.getElementById('termReduction').textContent = formatTime(timeSaved) + ' sooner';
+    document.getElementById('termReduction').textContent = '+' + formatTime(timeSaved) + ' sooner';
     
-    // Show the original calculated remaining term
+    // Update remaining term information
     const originalRemainingTerm = window.exactRemainingMonths || 0;
-    document.getElementById('originalRemainingTerm').textContent = formatTime(originalRemainingTerm);
+    document.getElementById('standardRemainingTerm').textContent = formatTime(originalRemainingTerm);
+    document.getElementById('extraRemainingTerm').textContent = formatTime(accelerated.monthsToPayoff);
     
     // Add bonus information if applicable
     if (annualBonus > 0 && accelerated.totalBonusApplied) {
@@ -1189,8 +1202,12 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
     // Clear existing rows
     scenariosBody.innerHTML = '';
     
-    // Get current values
+    // Get current values (including PMI and annual bonus to match main calculations)
     const currentExtraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
+    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
+    const homeValue = parseFloat(document.getElementById('homeValue').value) || 0;
+    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+    
     const monthlyRate = interestRate / 100 / 12;
     const calculatedPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingTermMonths)) / 
                         (Math.pow(1 + monthlyRate, remainingTermMonths) - 1);
@@ -1198,8 +1215,15 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
     // Use user's current payment or fall back to calculated P&I
     const monthlyPI = currentPayment || calculatedPI;
     
-    // Calculate baseline (no extra payments) using user's P&I
-    const baselinePayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, 0, 0, monthlyPI);
+    // Use the standardPayoff that was already calculated in the main function
+    // This ensures consistency between main table and scenarios table
+    const baselinePayoff = window.lastStandardPayoff || {
+        monthsToPayoff: remainingTermMonths,
+        totalInterest: 0
+    };
+    
+    // Use the remaining term from the baseline calculation (in years)
+    const remainingTermYears = baselinePayoff.monthsToPayoff / 12;
     
     // Payment amounts to test (including $0 for "do nothing" scenario)
     let paymentAmounts = [0, 20, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 3000];
@@ -1222,17 +1246,43 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
             const biweeklyAnnualExtra = biweeklyExtraPayment * 26;
             const monthlyEquivalentExtra = biweeklyAnnualExtra / 12;
             
-            payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, monthlyEquivalentExtra, 0, monthlyPI);
+            // For $0 extra: match baseline (P&I only, no PMI, no annual bonus)
+            // For >$0 extra: include PMI and annual bonus
+            if (extraAmount === 0) {
+                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, 0, 0, monthlyPI, homeValue, 0);
+            } else {
+                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, monthlyEquivalentExtra, annualBonus, monthlyPI, homeValue, monthlyPMI);
+            }
+            
             percentageOfPI = ((biweeklyExtraPayment / monthlyPI) * 100).toFixed(1);
-            totalPaymentDisplay = extraAmount > 0 ? `+$${biweeklyExtraPayment.toFixed(0)} Bi-Weekly` : `No Extra Payment`;
+            if (extraAmount > 0) {
+                totalPaymentDisplay = annualBonus > 0 
+                    ? `+$${biweeklyExtraPayment.toFixed(0)} Bi-Weekly + $${annualBonus.toLocaleString()} Annually`
+                    : `+$${biweeklyExtraPayment.toFixed(0)} Bi-Weekly`;
+            } else {
+                totalPaymentDisplay = `No Extra Payment`;
+            }
             extraPaymentDisplay = isCurrentPayment ? 
                 `+$${extraAmount.toLocaleString()} 👈` : 
                 `+$${extraAmount.toLocaleString()}`;
         } else {
             // Monthly mode: use monthly extra as-is
-            payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, extraAmount, 0, monthlyPI);
+            // For $0 extra: match baseline (P&I only, no PMI, no annual bonus)
+            // For >$0 extra: include PMI and annual bonus
+            if (extraAmount === 0) {
+                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, 0, 0, monthlyPI, homeValue, 0);
+            } else {
+                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, extraAmount, annualBonus, monthlyPI, homeValue, monthlyPMI);
+            }
+            
             percentageOfPI = ((extraAmount / monthlyPI) * 100).toFixed(1);
-            totalPaymentDisplay = extraAmount > 0 ? `+$${extraAmount.toFixed(0)} Monthly` : `No Extra Payment`;
+            if (extraAmount > 0) {
+                totalPaymentDisplay = annualBonus > 0 
+                    ? `+$${extraAmount.toFixed(0)} Monthly + $${annualBonus.toLocaleString()} Annually`
+                    : `+$${extraAmount.toFixed(0)} Monthly`;
+            } else {
+                totalPaymentDisplay = `No Extra Payment`;
+            }
             extraPaymentDisplay = isCurrentPayment ? 
                 `+$${extraAmount.toLocaleString()} 👈` : 
                 `+$${extraAmount.toLocaleString()}`;
@@ -1268,6 +1318,11 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
 }
 
 function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermMonths, currentPayment, extraPrincipal) {
+    // Get annual bonus and PMI values to match main calculations
+    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
+    const homeValue = parseFloat(document.getElementById('homeValue').value) || 0;
+    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+    
     // Calculate monthly payment details
     const monthlyRate = interestRate / 100 / 12;
     const monthlyPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingTermMonths)) / 
@@ -1276,8 +1331,8 @@ function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermM
     // Use current payment or calculated P&I
     const actualMonthlyPayment = currentPayment || monthlyPI;
     
-    // Calculate monthly scenario WITH user's extra payment
-    const monthlyPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, extraPrincipal, 0, actualMonthlyPayment);
+    // Calculate monthly scenario WITH user's extra payment and annual bonus (includes PMI)
+    const monthlyPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, extraPrincipal, annualBonus, actualMonthlyPayment, homeValue, monthlyPMI);
     
     // Bi-weekly strategy: 
     // - Keep monthly P&I payment as required by lender
@@ -1287,8 +1342,8 @@ function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermM
     const biweeklyExtraAnnual = biweeklyExtraPayment * 26; // 26 bi-weekly payments
     const monthlyEquivalentExtra = biweeklyExtraAnnual / 12; // Convert bi-weekly extra to monthly equivalent
     
-    // Calculate bi-weekly scenario (monthly P&I + equivalent monthly extra from bi-weekly payments, NO monthly extra)
-    const biweeklyPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, monthlyEquivalentExtra, 0, actualMonthlyPayment);
+    // Calculate bi-weekly scenario (monthly P&I + equivalent monthly extra from bi-weekly payments, includes PMI and annual bonus)
+    const biweeklyPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermMonths / 12, monthlyEquivalentExtra, annualBonus, actualMonthlyPayment, homeValue, monthlyPMI);
     
     // Update monthly strategy display (WITH user's extra payment)
     const totalMonthlyPayment = actualMonthlyPayment + extraPrincipal;
@@ -1476,6 +1531,7 @@ function showTooltip(type) {
                 <div class="calculation-section">
                     <h5>⏱️ Remaining Term Calculation</h5>
                     <div class="formula">Remaining Term = (Original Term × 12) - Months Elapsed</div>
+                    <div class="formula">Remaining Payments = Remaining Months</div>
                     <p>Months elapsed calculated from loan start date to current date.</p>
                 </div>
                 
@@ -1497,6 +1553,7 @@ function showTooltip(type) {
                     <ul class="value-list">
                         <li><span>Loan Start Date:</span> <strong>${loanStartDate || 'Not set'}</strong></li>
                         <li><span>Months Elapsed:</span> <strong>${monthsElapsed} months</strong></li>
+                        <li><span>Remaining Payments:</span> <strong>${remainingMonths} payments</strong></li>
                         <li><span>Remaining Term:</span> <strong>${remainingMonths} months (${(remainingMonths/12).toFixed(1)} years)</strong></li>
                         <li><span>Monthly P&I Payment:</span> <strong>$${monthlyPI.toLocaleString()}</strong></li>
                         <li><span>Original LTV:</span> <strong>${originalLTV.toFixed(1)}%</strong></li>
@@ -1674,9 +1731,16 @@ function showTooltip(type) {
             title.textContent = '💸 Extra Payment Scenarios - Impact Analysis';
             content = `
                 <div class="calculation-section">
-                    <h5>📊 Scenario Testing</h5>
-                    <p>Tests multiple extra payment amounts to show the impact curve.</p>
-                    <div class="formula">For each scenario: Run full mortgage simulation</div>
+                    <h5>📊 Scenario Methodology</h5>
+                    <p><strong>Baseline:</strong> Standard P&I payment only (no PMI, no extra payments)</p>
+                    <p><strong>Extra Payment Scenarios:</strong> P&I + PMI + Extra Principal + Annual Bonus</p>
+                    <div class="formula">Savings = Baseline Interest - Scenario Interest</div>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>🏠 PMI Handling</h5>
+                    <p>PMI is included in extra payment calculations and automatically eliminates when loan balance reaches 80% of home value.</p>
+                    <div class="formula">PMI Drops Off When: Remaining Balance ≤ ${(homeValue * 0.8).toLocaleString()}</div>
                 </div>
                 
                 <div class="calculation-section">
@@ -1686,11 +1750,14 @@ function showTooltip(type) {
                 </div>
                 
                 <div class="current-values">
-                    <h6>🔢 Your Base Values:</h6>
+                    <h6>🔢 Your Current Calculation:</h6>
                     <ul class="value-list">
                         <li><span>Monthly P&I Payment:</span> <strong>$${monthlyPI.toLocaleString()}</strong></li>
+                        <li><span>Monthly PMI:</span> <strong>$${actualMonthlyPMI.toLocaleString()}</strong></li>
                         <li><span>Current Extra Payment:</span> <strong>$${extraPrincipal.toLocaleString()}</strong></li>
-                        <li><span>Current Percentage:</span> <strong>${extraPrincipal > 0 ? ((extraPrincipal / monthlyPI) * 100).toFixed(1) + '%' : '0%'}</strong></li>
+                        <li><span>Annual Bonus Payment:</span> <strong>$${annualBonus.toLocaleString()}</strong></li>
+                        <li><span>Total Monthly (with extra):</span> <strong>$${(monthlyPI + actualMonthlyPMI + extraPrincipal).toLocaleString()}</strong></li>
+                        <li><span>PMI Elimination Threshold:</span> <strong>$${(homeValue * 0.8).toLocaleString()}</strong></li>
                     </ul>
                 </div>
             `;
