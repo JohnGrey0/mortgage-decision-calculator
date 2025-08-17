@@ -1553,66 +1553,107 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
     const remainingTermYears = baselinePayoff.monthsToPayoff / 12;
     
     // Payment amounts to test (including $0 for "do nothing" scenario)
-    let paymentAmounts = [0, 20, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 3000];
+    let paymentAmounts = [0, 20, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000];
     
     // Add current extra principal if it's not already in the list and is greater than 0
     if (currentExtraPrincipal > 0 && !paymentAmounts.includes(currentExtraPrincipal)) {
         paymentAmounts.push(currentExtraPrincipal);
     }
     
-    // Sort the payment amounts in ascending order
-    paymentAmounts.sort((a, b) => a - b);
+    // Add a special case for annual-only strategy ($0 monthly + annual bonus)
+    // This adds a $0 row that will show the annual bonus strategy, distinct from "no payment"
+    if (currentExtraPrincipal === 0 && annualBonus > 0) {
+        // We'll use a special marker value that we can identify later
+        // Use -1 as a marker that means "$0 monthly but with annual bonus"
+        paymentAmounts.push(-1);
+    }
+    
+    // Sort the payment amounts: 0 first, then -1 (annual only), then ascending order
+    paymentAmounts.sort((a, b) => {
+        if (a === 0) return -1; // 0 always comes first
+        if (b === 0) return 1;
+        if (a === -1) return -1; // -1 comes second (after 0)
+        if (b === -1) return 1;
+        return a - b; // Everything else in ascending order
+    });
     
     paymentAmounts.forEach(extraAmount => {
         let payoff, percentageOfPI, totalPaymentDisplay, extraPaymentDisplay;
-        const isCurrentPayment = extraAmount === currentExtraPrincipal;
+        // Current payment is when:
+        // 1. Monthly extra matches AND (monthly extra > 0 OR annual bonus = 0), OR
+        // 2. This is the special annual-only marker (-1) for $0 monthly + annual bonus
+        const isCurrentPayment = (extraAmount === currentExtraPrincipal && 
+                                 (currentExtraPrincipal > 0 || annualBonus === 0)) ||
+                                (extraAmount === -1 && currentExtraPrincipal === 0 && annualBonus > 0);
         
         if (mode === 'biweekly') {
-            // Bi-weekly mode: convert monthly extra to bi-weekly equivalent
-            const biweeklyExtraPayment = extraAmount / 2;
-            const biweeklyAnnualExtra = biweeklyExtraPayment * 26;
-            const monthlyEquivalentExtra = biweeklyAnnualExtra / 12;
-            
-            // For $0 extra: use the corrected baseline with original loan maturity
-            // For >$0 extra: include PMI and annual bonus
-            if (extraAmount === 0) {
-                payoff = window.lastStandardPayoff;
+            // Handle special annual-only marker
+            if (extraAmount === -1) {
+                // This represents $0 monthly + annual bonus only
+                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, 0, annualBonus, monthlyPI, homeValue, monthlyPMI);
+                percentageOfPI = (0 / monthlyPI * 100).toFixed(1);
+                totalPaymentDisplay = `$${annualBonus.toLocaleString()} Annual Lump Sum Only`;
+                extraPaymentDisplay = isCurrentPayment ? 
+                    `Annual Only 👈` : 
+                    `Annual Only`;
             } else {
-                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, monthlyEquivalentExtra, annualBonus, monthlyPI, homeValue, monthlyPMI);
+                // Bi-weekly mode: convert monthly extra to bi-weekly equivalent
+                const biweeklyExtraPayment = extraAmount / 2;
+                const biweeklyAnnualExtra = biweeklyExtraPayment * 26;
+                const monthlyEquivalentExtra = biweeklyAnnualExtra / 12;
+                
+                // For $0 extra: use the corrected baseline with original loan maturity
+                // For >$0 extra: include PMI and annual bonus
+                if (extraAmount === 0) {
+                    payoff = window.lastStandardPayoff;
+                } else {
+                    payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, monthlyEquivalentExtra, annualBonus, monthlyPI, homeValue, monthlyPMI);
+                }
+                
+                percentageOfPI = ((biweeklyExtraPayment / monthlyPI) * 100).toFixed(1);
+                if (extraAmount > 0) {
+                    totalPaymentDisplay = annualBonus > 0 
+                        ? `+$${biweeklyExtraPayment.toFixed(0)} Bi-Weekly + $${annualBonus.toLocaleString()} Annually`
+                        : `+$${biweeklyExtraPayment.toFixed(0)} Bi-Weekly`;
+                } else {
+                    totalPaymentDisplay = `No Extra Payment`;
+                }
+                extraPaymentDisplay = isCurrentPayment ? 
+                    `+$${extraAmount.toLocaleString()} 👈` : 
+                    `+$${extraAmount.toLocaleString()}`;
             }
-            
-            percentageOfPI = ((biweeklyExtraPayment / monthlyPI) * 100).toFixed(1);
-            if (extraAmount > 0) {
-                totalPaymentDisplay = annualBonus > 0 
-                    ? `+$${biweeklyExtraPayment.toFixed(0)} Bi-Weekly + $${annualBonus.toLocaleString()} Annually`
-                    : `+$${biweeklyExtraPayment.toFixed(0)} Bi-Weekly`;
-            } else {
-                totalPaymentDisplay = `No Extra Payment`;
-            }
-            extraPaymentDisplay = isCurrentPayment ? 
-                `+$${extraAmount.toLocaleString()} 👈` : 
-                `+$${extraAmount.toLocaleString()}`;
         } else {
-            // Monthly mode: use monthly extra as-is
-            // For $0 extra: use the corrected baseline with original loan maturity
-            // For >$0 extra: include PMI and annual bonus
-            if (extraAmount === 0) {
-                payoff = window.lastStandardPayoff;
+            // Handle special annual-only marker
+            if (extraAmount === -1) {
+                // This represents $0 monthly + annual bonus only
+                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, 0, annualBonus, monthlyPI, homeValue, monthlyPMI);
+                percentageOfPI = (0 / monthlyPI * 100).toFixed(1);
+                totalPaymentDisplay = `$${annualBonus.toLocaleString()} Annual Lump Sum Only`;
+                extraPaymentDisplay = isCurrentPayment ? 
+                    `Annual Only 👈` : 
+                    `Annual Only`;
             } else {
-                payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, extraAmount, annualBonus, monthlyPI, homeValue, monthlyPMI);
+                // Monthly mode: use monthly extra as-is
+                // For $0 extra: use the corrected baseline with original loan maturity
+                // For >$0 extra: include PMI and annual bonus
+                if (extraAmount === 0) {
+                    payoff = window.lastStandardPayoff;
+                } else {
+                    payoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTermYears, extraAmount, annualBonus, monthlyPI, homeValue, monthlyPMI);
+                }
+                
+                percentageOfPI = ((extraAmount / monthlyPI) * 100).toFixed(1);
+                if (extraAmount > 0) {
+                    totalPaymentDisplay = annualBonus > 0 
+                        ? `+$${extraAmount.toFixed(0)} Monthly + $${annualBonus.toLocaleString()} Annually`
+                        : `+$${extraAmount.toFixed(0)} Monthly`;
+                } else {
+                    totalPaymentDisplay = `No Extra Payment`;
+                }
+                extraPaymentDisplay = isCurrentPayment ? 
+                    `+$${extraAmount.toLocaleString()} 👈` : 
+                    `+$${extraAmount.toLocaleString()}`;
             }
-            
-            percentageOfPI = ((extraAmount / monthlyPI) * 100).toFixed(1);
-            if (extraAmount > 0) {
-                totalPaymentDisplay = annualBonus > 0 
-                    ? `+$${extraAmount.toFixed(0)} Monthly + $${annualBonus.toLocaleString()} Annually`
-                    : `+$${extraAmount.toFixed(0)} Monthly`;
-            } else {
-                totalPaymentDisplay = `No Extra Payment`;
-            }
-            extraPaymentDisplay = isCurrentPayment ? 
-                `+$${extraAmount.toLocaleString()} 👈` : 
-                `+$${extraAmount.toLocaleString()}`;
         }
         
         // Calculate savings compared to baseline (using historical-adjusted totals)
