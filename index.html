@@ -60,12 +60,16 @@
                         <span class="help-icon" onclick="showTooltip('calculated-values')" title="Click for detailed explanation">❓</span>
                     </h3>
                     <div class="form-row calculated-field">
-                        <label for="currentPayment">Monthly P&I Payment ($)</label>
+                        <label for="currentPayment">Monthly P&I Payment ($) 
+                            <span class="help-icon" onclick="showTooltip('pi-payment')" title="Click for P&I payment details">❓</span>
+                        </label>
                         <input type="text" id="currentPayment" readonly>
                         <small class="field-note">Automatically calculated from loan terms (Principal + Interest only)</small>
                     </div>
                     <div class="form-row calculated-field">
-                        <label for="pmiPayment">Monthly PMI ($)</label>
+                        <label for="pmiPayment">Monthly PMI ($) 
+                            <span class="help-icon" onclick="showTooltip('pmi-calculation')" title="Click for PMI calculation details">❓</span>
+                        </label>
                         <input type="number" id="pmiPayment" step="10">
                         <small class="field-note">Calculated at 0.5% annually, or enter your actual PMI amount</small>
                     </div>
@@ -80,7 +84,7 @@
                         <small class="field-note">Time remaining on standard payment schedule (years and months)</small>
                     </div>
                     <div class="form-row calculated-field">
-                        <label for="calculatedPayoffDate">Standard Payoff Date</label>
+                        <label for="calculatedPayoffDate">Standard Maturity</label>
                         <input type="text" id="calculatedPayoffDate" readonly>
                         <small class="field-note">When the loan would be fully paid off with standard payments</small>
                     </div>
@@ -123,11 +127,11 @@
                     </h3>
                     <p class="strategy-description">Pay loan off early using extra principal payments. Shows total interest saved vs. standard payment schedule.</p>
                     <div class="metric">
-                        <span class="label">Standard Payoff Date:</span>
+                        <span class="label">Standard Maturity:</span>
                         <span class="value" id="standardPayoffSummary">-</span>
                     </div>
                     <div class="metric">
-                        <span class="label">Accelerated Payoff Date:</span>
+                        <span class="label">Accelerated Maturity:</span>
                         <span class="value" id="acceleratedPayoffSummary">-</span>
                     </div>
                     <div class="metric">
@@ -203,34 +207,33 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>Payoff Date</td>
+                                <td>Maturity</td>
                                 <td id="standardPayoffDate">-</td>
                                 <td id="extraPayoffDate">-</td>
                                 <td id="timeSavedDetailed">-</td>
                             </tr>
                             <tr>
-                                <td>Total Interest Paid</td>
-                                <td id="standardTotalInterest">-</td>
-                                <td id="extraTotalInterest">-</td>
-                                <td id="interestSavedDetailed">-</td>
-                            </tr>
-                            <tr>
-                                <td>Total Amount Paid</td>
-                                <td id="standardTotalPaid">-</td>
-                                <td id="extraTotalPaidDetailed">-</td>
-                                <td id="totalSavedDetailed">-</td>
+                                <td>
+                                    <strong>Total Mortgage Cost</strong><br>
+                                    <small style="color: var(--text-secondary);">Interest + Principal</small>
+                                </td>
+                                <td>
+                                    <div><strong id="standardTotalPaid">-</strong></div>
+                                    <small style="color: var(--text-secondary);">Interest: <span id="standardTotalInterest">-</span></small>
+                                </td>
+                                <td>
+                                    <div><strong id="extraTotalPaidDetailed">-</strong></div>
+                                    <small style="color: var(--text-secondary);">Interest: <span id="extraTotalInterest">-</span></small>
+                                </td>
+                                <td>
+                                    <strong id="totalSavedDetailed">-</strong>
+                                </td>
                             </tr>
                             <tr>
                                 <td>Monthly Payment (P&I)</td>
                                 <td id="standardMonthlyPI">-</td>
                                 <td id="extraMonthlyPI">-</td>
                                 <td id="extraPrincipalAmount">-</td>
-                            </tr>
-                            <tr>
-                                <td>Loan Maturity Date</td>
-                                <td id="standardTerm">-</td>
-                                <td id="extraTerm">-</td>
-                                <td id="termReduction">-</td>
                             </tr>
                             <tr>
                                 <td>Remaining Term</td>
@@ -260,9 +263,12 @@
                             <tr>
                                 <th>Extra Payment</th>
                                 <th>% of P&I</th>
-                                <th>Payoff Date</th>
+                                <th>Maturity</th>
                                 <th>Time Saved</th>
-                                <th>Interest Saved</th>
+                                <th>
+                                    Interest Impact
+                                    <br><small style="font-weight: 400; color: var(--text-secondary);">Saved & Comparison</small>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="paymentScenariosBody">
@@ -295,7 +301,7 @@
                                 <span class="value" id="monthlyAnnualTotal">$0</span>
                             </div>
                             <div class="detail-item">
-                                <span class="label">Payoff Date:</span>
+                                <span class="label">Maturity:</span>
                                 <span class="value" id="monthlyPayoffTime">0 years</span>
                             </div>
                             <div class="detail-item">
@@ -323,7 +329,7 @@
                                 <span class="value" id="biweeklyAnnualTotal">$0</span>
                             </div>
                             <div class="detail-item">
-                                <span class="label">Payoff Date:</span>
+                                <span class="label">Maturity:</span>
                                 <span class="value" id="biweeklyPayoffTime">0 years</span>
                             </div>
                             <div class="detail-item">
