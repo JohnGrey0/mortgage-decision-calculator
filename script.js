@@ -2,6 +2,7 @@
 let balanceChart = null;
 let comparisonChart = null;
 let strategyChart = null;
+let pureInvestmentChart = null;
 
 // Initialize theme
 function initializeTheme() {
@@ -239,6 +240,7 @@ function toggleTheme() {
     if (balanceChart) updateChartTheme(balanceChart);
     if (comparisonChart) updateChartTheme(comparisonChart);
     if (strategyChart) updateChartTheme(strategyChart);
+    if (pureInvestmentChart) updateChartTheme(pureInvestmentChart);
 }
 
 function updateThemeIcon(theme) {
@@ -312,9 +314,9 @@ function calculateMortgagePayoff(principal, rate, term, extraPayment = 0, annual
             totalPrincipalPayment += monthlyPMI; // Add former PMI payment as extra principal
         }
         
-        // Apply annual bonus at the beginning of each year (month 12, 24, 36, etc.)
+        // Apply annual bonus at the beginning of each year (month 1, 13, 25, etc. = January)
         let bonusThisMonth = 0;
-        if (annualBonus > 0 && month > 0 && (month + 1) % 12 === 1) {
+        if (annualBonus > 0 && month > 0 && (month) % 12 === 1) {
             bonusThisMonth = Math.min(annualBonus, balance - totalPrincipalPayment);
             if (bonusThisMonth > 0) {
                 totalPrincipalPayment += bonusThisMonth;
@@ -732,6 +734,7 @@ function calculate() {
     createBalanceChart(standardPayoff, acceleratedPayoff);
     createStrategyChart(acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment);
     createComparisonChart(acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment);
+    createPureInvestmentChart(standardPayoff, weakInvestment, averageInvestment, strongInvestment);
     
     // Show results
     document.getElementById('resultsSection').style.display = 'block';
@@ -1182,6 +1185,7 @@ function createStrategyChart(payoff, weak, average, strong) {
     const gridColor = isDark ? '#475569' : '#e2e8f0';
     
     const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value);
+    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
     const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const remainingTerm = parseFloat(document.getElementById('remainingTerm').value);
@@ -1227,9 +1231,9 @@ function createStrategyChart(payoff, weak, average, strong) {
         const interestSavedSoFar = totalInterestSaved * progressRatio;
         
         // Investment values: investing only the extra principal amount each month (total value, not just gains)
-        const weakInvestTotal = calculateInvestmentGrowth(monthlyInvestmentAmount, 4, month).finalBalance;
-        const avgInvestTotal = calculateInvestmentGrowth(monthlyInvestmentAmount, 7, month).finalBalance;
-        const strongInvestTotal = calculateInvestmentGrowth(monthlyInvestmentAmount, 10, month).finalBalance;
+        const weakInvestTotal = calculateInvestmentGrowth(monthlyInvestmentAmount, 4, month, annualBonus).finalBalance;
+        const avgInvestTotal = calculateInvestmentGrowth(monthlyInvestmentAmount, 7, month, annualBonus).finalBalance;
+        const strongInvestTotal = calculateInvestmentGrowth(monthlyInvestmentAmount, 10, month, annualBonus).finalBalance;
         
         weakNetBenefit.push(weakInvestTotal);
         averageNetBenefit.push(avgInvestTotal);
@@ -1249,7 +1253,9 @@ function createStrategyChart(payoff, weak, average, strong) {
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     borderWidth: 3,
                     fill: true,
-                    tension: 0.1
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
                 },
                 {
                     label: '🐻 Invest Extra Principal (Weak 4%)',
@@ -1258,7 +1264,9 @@ function createStrategyChart(payoff, weak, average, strong) {
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
                 },
                 {
                     label: '📈 Invest Extra Principal (Average 7%)',
@@ -1267,7 +1275,9 @@ function createStrategyChart(payoff, weak, average, strong) {
                     backgroundColor: 'rgba(245, 158, 11, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
                 },
                 {
                     label: '🚀 Invest Extra Principal (Strong 10%)',
@@ -1276,7 +1286,9 @@ function createStrategyChart(payoff, weak, average, strong) {
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
                 }
             ]
         },
@@ -1360,6 +1372,7 @@ function createComparisonChart(payoff, weak, average, strong) {
     const gridColor = isDark ? '#475569' : '#e2e8f0';
     
     const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value);
+    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
     const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const remainingTerm = parseFloat(document.getElementById('remainingTerm').value);
@@ -1506,6 +1519,172 @@ function createComparisonChart(payoff, weak, average, strong) {
                     title: {
                         display: true,
                         text: 'Investment Gains ($)',
+                        color: textColor
+                    },
+                    ticks: {
+                        color: textColor,
+                        callback: function(value) {
+                            return formatCurrency(value);
+                        }
+                    },
+                    grid: {
+                        color: gridColor
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createPureInvestmentChart(standardPayoff, weak, average, strong) {
+    const ctx = document.getElementById('pureInvestmentChart').getContext('2d');
+    
+    if (pureInvestmentChart) {
+        pureInvestmentChart.destroy();
+    }
+    
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#f1f5f9' : '#1e293b';
+    const gridColor = isDark ? '#475569' : '#e2e8f0';
+    
+    const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
+    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
+    
+    // Use the full original loan term for pure investment timeline
+    const timelineMonths = standardPayoff.monthsToPayoff;
+    
+    // Create date labels starting from current date
+    const currentDate = new Date();
+    const dateLabels = [];
+    for (let i = 0; i < timelineMonths; i++) {
+        const futureDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + i + 1, 1);
+        dateLabels.push(futureDate.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short'
+        }));
+    }
+    
+    // Calculate investment growth over full term
+    const weakInvestmentLine = [];
+    const averageInvestmentLine = [];
+    const strongInvestmentLine = [];
+    const totalContributionsLine = [];
+    
+    for (let month = 1; month <= timelineMonths; month++) {
+        // Calculate investment growth: investing extra principal + annual bonus
+        const weakGrowth = calculateInvestmentGrowth(extraPrincipal, 4, month, annualBonus);
+        const avgGrowth = calculateInvestmentGrowth(extraPrincipal, 7, month, annualBonus);
+        const strongGrowth = calculateInvestmentGrowth(extraPrincipal, 10, month, annualBonus);
+        
+        weakInvestmentLine.push(weakGrowth.totalValue);
+        averageInvestmentLine.push(avgGrowth.totalValue);
+        strongInvestmentLine.push(strongGrowth.totalValue);
+        totalContributionsLine.push(weakGrowth.totalContributions); // Same for all scenarios
+    }
+    
+    pureInvestmentChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dateLabels,
+            datasets: [
+                {
+                    label: '💵 Total Contributions',
+                    data: totalContributionsLine,
+                    borderColor: '#6b7280',
+                    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                },
+                {
+                    label: '🐻 Total Value (Weak 4%)',
+                    data: weakInvestmentLine,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                },
+                {
+                    label: '📈 Total Value (Average 7%)',
+                    data: averageInvestmentLine,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                },
+                {
+                    label: '🚀 Total Value (Strong 10%)',
+                    data: strongInvestmentLine,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: textColor,
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    backgroundColor: isDark ? '#334155' : '#ffffff',
+                    titleColor: textColor,
+                    bodyColor: textColor,
+                    borderColor: gridColor,
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Date',
+                        color: textColor
+                    },
+                    ticks: {
+                        color: textColor,
+                        maxTicksLimit: 12,
+                        callback: function(value, index) {
+                            return index % Math.ceil(dateLabels.length / 12) === 0 ? this.getLabelForValue(value) : '';
+                        }
+                    },
+                    grid: {
+                        color: gridColor
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Investment Value ($)',
                         color: textColor
                     },
                     ticks: {
@@ -2111,23 +2290,96 @@ function showTooltip(type) {
             title.textContent = '📊 Pure Investment Strategy - Alternative Comparison';
             content = `
                 <div class="calculation-section">
-                    <h5>💸 Investment vs Extra Payments</h5>
-                    <p>Instead of extra mortgage payments, invest the same amounts monthly.</p>
-                    <div class="formula">Monthly Investment = Extra Principal + Annual Bonus ÷ 12</div>
+                    <h5>🎯 Strategy Overview</h5>
+                    <p><strong>Pure Investment:</strong> Instead of making extra mortgage payments, invest that same money in the market.</p>
+                    <p><strong>Key Trade-off:</strong> Investment growth potential vs. guaranteed mortgage interest savings.</p>
+                    <div class="formula">Investment Amount = Extra Principal + Annual Bonus</div>
+                    <div class="formula">Investment Period = Full Original Loan Term (${originalTerm} years)</div>
                 </div>
                 
                 <div class="calculation-section">
-                    <h5>⚖️ Net Calculation</h5>
-                    <div class="formula">Net Benefit = Investment Growth - Additional Interest Paid</div>
-                    <p>Since you're not paying extra principal, you pay more interest over the loan term.</p>
+                    <h5>💰 Investment Growth Calculation</h5>
+                    <p><strong>Monthly Contributions:</strong> $${extraPrincipal.toLocaleString()} per month</p>
+                    <p><strong>Annual Lump Sum:</strong> $${annualBonus.toLocaleString()} once per year (January)</p>
+                    <p><strong>Total Annual Investment:</strong> ($${extraPrincipal.toLocaleString()} × 12) + $${annualBonus.toLocaleString()} = $${((extraPrincipal * 12) + annualBonus).toLocaleString()}</p>
+                    <div class="formula">Future Value = Monthly Annuity + Annual Lump Sum Growth</div>
+                    <p><strong>Calculation Method:</strong> Monthly payments grow monthly, annual bonus grows from each January deposit</p>
+                    
+                    <h6>📈 Three Scenarios Calculated:</h6>
+                    <ul>
+                        <li><strong>Weak Market (4% annual):</strong> Conservative, bond-like returns</li>
+                        <li><strong>Average Market (7% annual):</strong> Historical stock market average</li>
+                        <li><strong>Strong Market (10% annual):</strong> Aggressive growth scenario</li>
+                    </ul>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>💸 Tax Treatment (Critical Factor)</h5>
+                    <p><strong>Capital Gains Tax:</strong> 20% applied to investment gains only (not contributions)</p>
+                    <div class="formula">Taxable Gains = Final Investment Value - Total Contributions</div>
+                    <div class="formula">Tax Owed = Taxable Gains × 20%</div>
+                    <div class="formula">Net Investment Value = Final Value - Tax Owed</div>
+                    
+                    <p><strong>Example:</strong> If you contribute $100,000 and it grows to $200,000:</p>
+                    <ul>
+                        <li>Taxable gains: $200,000 - $100,000 = $100,000</li>
+                        <li>Tax owed: $100,000 × 20% = $20,000</li>
+                        <li>Net value: $200,000 - $20,000 = $180,000</li>
+                    </ul>
+                    
+                    <p><em>Note: Mortgage interest savings are tax-free money in your pocket.</em></p>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>⚖️ True Cost Comparison</h5>
+                    <p><strong>Investment Strategy Cost:</strong> You continue paying standard mortgage payments for the full ${originalTerm} years.</p>
+                    <div class="formula">Extra Interest Paid = Standard Loan Interest - Accelerated Loan Interest</div>
+                    
+                    <p><strong>Net Benefit Calculation:</strong></p>
+                    <div class="formula">Net Investment Benefit = After-Tax Investment Value - Extra Interest Cost</div>
+                    
+                    <p><strong>Why This Matters:</strong> Investment returns must overcome both taxes AND the extra interest you pay by not accelerating the mortgage.</p>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>🔍 Risk vs. Certainty Analysis</h5>
+                    <p><strong>Mortgage Payoff (Guaranteed):</strong></p>
+                    <ul>
+                        <li>✅ Interest savings are guaranteed and immediate</li>
+                        <li>✅ No market risk or volatility</li>
+                        <li>✅ No tax implications</li>
+                        <li>✅ Improves cash flow when mortgage is paid off</li>
+                    </ul>
+                    
+                    <p><strong>Investment Strategy (Market Risk):</strong></p>
+                    <ul>
+                        <li>⚠️ Returns are not guaranteed</li>
+                        <li>⚠️ Subject to market volatility and potential losses</li>
+                        <li>⚠️ Capital gains tax reduces final value</li>
+                        <li>⚠️ Must outperform mortgage interest rate + taxes to win</li>
+                        <li>✅ Potentially higher returns in strong markets</li>
+                        <li>✅ Maintains liquidity (can access investments)</li>
+                    </ul>
+                </div>
+                
+                <div class="calculation-section">
+                    <h5>📊 Break-Even Analysis</h5>
+                    <p><strong>Required Return Rate:</strong> Investment must beat your mortgage interest rate after taxes.</p>
+                    <div class="formula">Required Return ≈ Mortgage Rate ÷ (1 - Tax Rate)</div>
+                    <p>With ${interestRate}% mortgage and 20% tax rate: ${(interestRate / 0.8).toFixed(2)}% return needed to break even.</p>
                 </div>
                 
                 <div class="current-values">
-                    <h6>🔢 Your Investment Strategy:</h6>
+                    <h6>🔢 Your Pure Investment Strategy:</h6>
                     <ul class="value-list">
-                        <li><span>Monthly Investment:</span> <strong>$${(extraPrincipal + (annualBonus / 12)).toLocaleString()}</strong></li>
-                        <li><span>Investment Period:</span> <strong>${originalTerm} years (full loan term)</strong></li>
-                        <li><span>Trade-off:</span> <strong>Investment growth vs. extra interest paid</strong></li>
+                        <li><span>Monthly Investment:</span> <strong>$${extraPrincipal.toLocaleString()}</strong></li>
+                        <li><span>Annual Lump Sum:</span> <strong>$${annualBonus.toLocaleString()}</strong></li>
+                        <li><span>Total Annual Investment:</span> <strong>$${((extraPrincipal * 12) + annualBonus).toLocaleString()}</strong></li>
+                        <li><span>Investment Period:</span> <strong>${originalTerm} years (${originalTerm * 12} monthly payments + ${originalTerm} annual deposits)</strong></li>
+                        <li><span>Total Contributions:</span> <strong>$${(((extraPrincipal * 12) + annualBonus) * originalTerm).toLocaleString()}</strong></li>
+                        <li><span>Tax Rate Applied:</span> <strong>20% on gains only</strong></li>
+                        <li><span>Break-Even Rate:</span> <strong>${(interestRate / 0.8).toFixed(2)}% annual return</strong></li>
+                        <li><span>Risk Profile:</span> <strong>Market risk vs. guaranteed mortgage savings</strong></li>
                     </ul>
                 </div>
             `;
