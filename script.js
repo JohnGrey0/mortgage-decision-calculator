@@ -1879,18 +1879,27 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
     const pureAverageLine = [];
     const pureStrongLine = [];
     
+    // Use existing mortgage calculation functions to get progressive interest savings
+    // Calculate both scenarios with their payment schedules
+    const standardSchedule = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0, 0, currentPayment, homeValue, 0);
+    const acceleratedSchedule = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, extraPrincipal, annualBonus, currentPayment, homeValue, monthlyPMI);
+    
     for (let month = 1; month <= timelineMonths; month++) {
         // Hybrid strategy logic
         if (month <= payoffMonth) {
-            // During payoff period: show flat line at total interest savings amount
-            hybridWeakLine.push(interestSavedTotal);
-            hybridAverageLine.push(interestSavedTotal);
-            hybridStrongLine.push(interestSavedTotal);
+            // Show progressive growth to the total interest saved amount
+            const progressRatio = month / payoffMonth;
+            const currentInterestSavings = interestSavedTotal * progressRatio;
+            
+            hybridWeakLine.push(currentInterestSavings);
+            hybridAverageLine.push(currentInterestSavings);
+            hybridStrongLine.push(currentInterestSavings);
         } else {
             // After payoff: add investment growth to interest savings
             const investmentPeriod = month - payoffMonth;
             
             // Calculate compound growth for investment portion using correct function signature
+            // This shows the progressive growth from month 1 of investing
             const weakGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 4, investmentPeriod, 0);
             const averageGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 7, investmentPeriod, 0);
             const strongGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 10, investmentPeriod, 0);
@@ -1902,6 +1911,7 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
             const averageAfterTax = averageGrowth.totalContributions + (averageGrowth.totalGains * (1 - taxRate/100));
             const strongAfterTax = strongGrowth.totalContributions + (strongGrowth.totalGains * (1 - taxRate/100));
             
+            // Add investment value to the interest savings (smooth transition)
             hybridWeakLine.push(interestSavedTotal + weakAfterTax);
             hybridAverageLine.push(interestSavedTotal + averageAfterTax);
             hybridStrongLine.push(interestSavedTotal + strongAfterTax);
