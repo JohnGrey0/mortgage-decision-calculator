@@ -621,7 +621,7 @@ function calculatePMI() {
     }
 }
 
-function calculate() {
+function calculate(autoRun = false) {
     const button = document.querySelector('.calculate-btn');
     button.classList.add('loading');
     
@@ -736,9 +736,19 @@ function calculate() {
     createComparisonChart(acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment);
     createPureInvestmentChart(standardPayoff, weakInvestment, averageInvestment, strongInvestment);
     
-    // Show results
-    document.getElementById('resultsSection').style.display = 'block';
-    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+    // Results are now always visible in tab structure
+    // Switch to summary tab automatically after calculation (only for manual calculations)
+    if (!autoRun) {
+        // Dismiss example notice when user runs their own calculation
+        dismissExampleNotice();
+        
+        setTimeout(() => {
+            const summaryTabBtn = document.querySelector('[onclick*="summaryTab"]');
+            if (summaryTabBtn) {
+                summaryTabBtn.click();
+            }
+        }, 100);
+    }
     
     setTimeout(() => {
         button.classList.remove('loading');
@@ -2693,8 +2703,56 @@ function hideTooltip() {
     modal.classList.remove('show');
 }
 
+// Tab functionality
+function openTab(evt, tabName) {
+    // Hide all tab panels
+    const tabPanels = document.getElementsByClassName('tab-panel');
+    for (let i = 0; i < tabPanels.length; i++) {
+        tabPanels[i].classList.remove('active');
+    }
+    
+    // Remove active class from all tab buttons
+    const tabButtons = document.getElementsByClassName('tab-btn');
+    for (let i = 0; i < tabButtons.length; i++) {
+        tabButtons[i].classList.remove('active');
+    }
+    
+    // Show the selected tab panel and mark button as active
+    document.getElementById(tabName).classList.add('active');
+    evt.currentTarget.classList.add('active');
+}
+
+// Example notice functions
+function showExampleNotice() {
+    const notice = document.getElementById('exampleNotice');
+    if (notice) {
+        notice.style.display = 'block';
+    }
+}
+
+function dismissExampleNotice() {
+    const notice = document.getElementById('exampleNotice');
+    if (notice) {
+        notice.style.display = 'none';
+    }
+}
+
 // Add some sample data on load for demo purposes
 window.addEventListener('load', function() {
     // The HTML already has sample values, so we don't need to set them again
     console.log('Mortgage Payoff vs Investment Calculator loaded successfully!');
+    
+    // Automatically calculate with the default values on page load
+    // so users can see example results in all tabs immediately
+    setTimeout(() => {
+        if (typeof calculate === 'function') {
+            console.log('Running automatic calculation with default values...');
+            calculate(true); // Pass true to indicate this is an auto-run
+            
+            // Show example notice after calculation completes
+            setTimeout(() => {
+                showExampleNotice();
+            }, 1000);
+        }
+    }, 500); // Small delay to ensure all DOM elements are ready
 });

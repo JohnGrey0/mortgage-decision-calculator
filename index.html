@@ -17,369 +17,411 @@
             </button>
         </header>
 
-        <div class="calculator-section">
-            <div class="input-grid">
-                <div class="input-group">
-                    <h3>🏡 Mortgage Details 
-                        <span class="help-icon" onclick="showTooltip('mortgage-details')" title="Click for detailed explanation">❓</span>
-                    </h3>
-                    <div class="form-row">
-                        <label for="originalBalance">Original Loan Amount ($)</label>
-                        <input type="number" id="originalBalance" value="341910" step="1000">
-                        <small class="field-note">Total amount originally borrowed</small>
-                    </div>
-                    <div class="form-row">
-                        <label for="homeValue">Original Home Value ($)</label>
-                        <input type="number" id="homeValue" value="390000" step="1000">
-                        <small class="field-note">Original purchase price or appraised value when loan originated</small>
-                    </div>
-                    <div class="form-row">
-                        <label for="remainingBalance">Remaining Balance ($)</label>
-                        <input type="number" id="remainingBalance" value="324607.85" step="1000">
-                        <small class="field-note">Current principal balance owed</small>
-                    </div>
-                    <div class="form-row">
-                        <label for="interestRate">Interest Rate (%)</label>
-                        <input type="number" id="interestRate" value="5.75" step="0.1">
-                        <small class="field-note">Annual interest rate on your loan</small>
-                    </div>
-                    <div class="form-row">
-                        <label for="loanStartDate">Loan Start Date</label>
-                        <input type="month" id="loanStartDate" value="2022-12">
-                        <small class="field-note">When your first payment happened</small>
-                    </div>
-                    <div class="form-row">
-                        <label for="originalTerm">Original Loan Term (years)</label>
-                        <input type="number" id="originalTerm" value="30" step="1">
-                        <small class="field-note">Original length of your loan (typically 15 or 30 years)</small>
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <h3>🔢 Calculated Values 
-                        <span class="help-icon" onclick="showTooltip('calculated-values')" title="Click for detailed explanation">❓</span>
-                    </h3>
-                    <div class="form-row calculated-field">
-                        <label for="currentPayment">Monthly P&I Payment ($) 
-                            <span class="help-icon" onclick="showTooltip('pi-payment')" title="Click for P&I payment details">❓</span>
-                        </label>
-                        <input type="text" id="currentPayment" readonly>
-                        <small class="field-note">Automatically calculated from loan terms (Principal + Interest only)</small>
-                    </div>
-                    <div class="form-row calculated-field">
-                        <label for="pmiPayment">Monthly PMI ($) 
-                            <span class="help-icon" onclick="showTooltip('pmi-calculation')" title="Click for PMI calculation details">❓</span>
-                        </label>
-                        <input type="number" id="pmiPayment" step="10">
-                        <small class="field-note">Calculated at 0.5% annually, or enter your actual PMI amount</small>
-                    </div>
-                    <div class="form-row calculated-field">
-                        <label for="remainingPayments">Remaining Payments (Standard)</label>
-                        <input type="text" id="remainingPayments" readonly>
-                        <small class="field-note">Number of standard payments left without extra principal payments</small>
-                    </div>
-                    <div class="form-row calculated-field">
-                        <label for="remainingTerm">Remaining Term</label>
-                        <input type="text" id="remainingTerm" readonly>
-                        <small class="field-note">Time remaining on standard payment schedule (years and months)</small>
-                    </div>
-                    <div class="form-row calculated-field">
-                        <label for="calculatedPayoffDate">Standard Maturity</label>
-                        <input type="text" id="calculatedPayoffDate" readonly>
-                        <small class="field-note">When the loan would be fully paid off with standard payments</small>
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <h3>💰 Payment Info 
-                        <span class="help-icon" onclick="showTooltip('payment-info')" title="Click for detailed explanation">❓</span>
-                    </h3>
-                    <div class="form-row">
-                        <label for="extraPrincipal">Monthly Overpayment ($)</label>
-                        <input type="number" id="extraPrincipal" value="0" step="50">
-                        <small class="field-note">Additional monthly amount going directly to principal</small>
-                    </div>
-                    <div class="form-row">
-                        <label for="annualBonus">Annual Lump Sum Payment ($)</label>
-                        <input type="number" id="annualBonus" value="0" step="500">
-                        <small class="field-note">Yearly lump sum applied to principal (e.g., tax refund, work bonus)</small>
-                    </div>
-                </div>
+        <!-- Example Data Notice -->
+        <div id="exampleNotice" class="example-notice" style="display: none;">
+            <div class="notice-content">
+                <span class="notice-icon">💡</span>
+                <span class="notice-text">Showing example calculation with sample data. Modify the inputs and click "Calculate & Compare" to see your personalized results.</span>
+                <button class="notice-dismiss" onclick="dismissExampleNotice()">×</button>
             </div>
-
-            <button class="calculate-btn" onclick="calculate()">
-                <span>Calculate & Compare</span>
-                <span class="btn-icon">⚡</span>
-            </button>
         </div>
 
-        <div class="results-section" id="resultsSection" style="display: none;">
-            <div class="calculation-methodology">
-                <h3>📋 Calculation Methodology 
-                    <span class="help-icon" onclick="showTooltip('methodology')" title="Click for detailed explanation">❓</span>
-                </h3>
+        <!-- Tab Navigation -->
+        <div class="tab-container">
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="openTab(event, 'inputTab')">
+                    🔢 Calculator Inputs
+                </button>
+                <button class="tab-btn" onclick="openTab(event, 'summaryTab')">
+                    � Summary & Analysis
+                </button>
+                <button class="tab-btn" onclick="openTab(event, 'scenariosTab')">
+                    � Scenarios & Strategies
+                </button>
+                <button class="tab-btn" onclick="openTab(event, 'chartsTab')">
+                    📈 Charts & Visualizations
+                </button>
             </div>
 
-            <div class="summary-cards">
-                <div class="summary-card payoff">
-                    <h3>🏠 Mortgage Payoff Strategy 
-                        <span class="help-icon" onclick="showTooltip('payoff-strategy')" title="Click for detailed explanation">❓</span>
-                    </h3>
-                    <p class="strategy-description">Pay loan off early using extra principal payments. Shows total interest saved vs. standard payment schedule.</p>
-                    <div class="metric">
-                        <span class="label">Standard Maturity:</span>
-                        <span class="value" id="standardPayoffSummary">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="label">Accelerated Maturity:</span>
-                        <span class="value" id="acceleratedPayoffSummary">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="label">Interest Saved:</span>
-                        <span class="value" id="interestSaved">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="label">Total Interest Paid:</span>
-                        <span class="value" id="totalInterestPaid">-</span>
-                    </div>
-                    <div class="metric">
-                        <span class="label">Total Lifetime Cost:</span>
-                        <span class="value" id="totalMortgageCost">-</span>
+            <div class="tab-content">
+                <!-- Input Tab -->
+                <div id="inputTab" class="tab-panel active">
+                    <div class="calculator-section">
+                        <div class="input-grid">
+                            <div class="input-group">
+                                <h3>🏡 Mortgage Details 
+                                    <span class="help-icon" onclick="showTooltip('mortgage-details')" title="Click for detailed explanation">❓</span>
+                                </h3>
+                                <div class="form-row">
+                                    <label for="originalBalance">Original Loan Amount ($)</label>
+                                    <input type="number" id="originalBalance" value="341910" step="1000">
+                                    <small class="field-note">Total amount originally borrowed</small>
+                                </div>
+                                <div class="form-row">
+                                    <label for="homeValue">Original Home Value ($)</label>
+                                    <input type="number" id="homeValue" value="390000" step="1000">
+                                    <small class="field-note">Original purchase price or appraised value when loan originated</small>
+                                </div>
+                                <div class="form-row">
+                                    <label for="remainingBalance">Remaining Balance ($)</label>
+                                    <input type="number" id="remainingBalance" value="324607.85" step="1000">
+                                    <small class="field-note">Current principal balance owed</small>
+                                </div>
+                                <div class="form-row">
+                                    <label for="interestRate">Interest Rate (%)</label>
+                                    <input type="number" id="interestRate" value="5.75" step="0.1">
+                                    <small class="field-note">Annual interest rate on your loan</small>
+                                </div>
+                                <div class="form-row">
+                                    <label for="loanStartDate">Loan Start Date</label>
+                                    <input type="month" id="loanStartDate" value="2022-12">
+                                    <small class="field-note">When your first payment happened</small>
+                                </div>
+                                <div class="form-row">
+                                    <label for="originalTerm">Original Loan Term (years)</label>
+                                    <input type="number" id="originalTerm" value="30" step="1">
+                                    <small class="field-note">Original length of your loan (typically 15 or 30 years)</small>
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <h3>🔢 Calculated Values 
+                                    <span class="help-icon" onclick="showTooltip('calculated-values')" title="Click for detailed explanation">❓</span>
+                                </h3>
+                                <div class="form-row calculated-field">
+                                    <label for="currentPayment">Monthly P&I Payment ($) 
+                                        <span class="help-icon" onclick="showTooltip('pi-payment')" title="Click for P&I payment details">❓</span>
+                                    </label>
+                                    <input type="text" id="currentPayment" readonly>
+                                    <small class="field-note">Automatically calculated from loan terms (Principal + Interest only)</small>
+                                </div>
+                                <div class="form-row calculated-field">
+                                    <label for="pmiPayment">Monthly PMI ($) 
+                                        <span class="help-icon" onclick="showTooltip('pmi-calculation')" title="Click for PMI calculation details">❓</span>
+                                    </label>
+                                    <input type="number" id="pmiPayment" step="10">
+                                    <small class="field-note">Calculated at 0.5% annually, or enter your actual PMI amount</small>
+                                </div>
+                                <div class="form-row calculated-field">
+                                    <label for="remainingPayments">Remaining Payments (Standard)</label>
+                                    <input type="text" id="remainingPayments" readonly>
+                                    <small class="field-note">Number of standard payments left without extra principal payments</small>
+                                </div>
+                                <div class="form-row calculated-field">
+                                    <label for="remainingTerm">Remaining Term</label>
+                                    <input type="text" id="remainingTerm" readonly>
+                                    <small class="field-note">Time remaining on standard payment schedule (years and months)</small>
+                                </div>
+                                <div class="form-row calculated-field">
+                                    <label for="calculatedPayoffDate">Standard Maturity</label>
+                                    <input type="text" id="calculatedPayoffDate" readonly>
+                                    <small class="field-note">When the loan would be fully paid off with standard payments</small>
+                                </div>
+                            </div>
+
+                            <div class="input-group">
+                                <h3>💰 Payment Info 
+                                    <span class="help-icon" onclick="showTooltip('payment-info')" title="Click for detailed explanation">❓</span>
+                                </h3>
+                                <div class="form-row">
+                                    <label for="extraPrincipal">Monthly Overpayment ($)</label>
+                                    <input type="number" id="extraPrincipal" value="0" step="50">
+                                    <small class="field-note">Additional monthly amount going directly to principal</small>
+                                </div>
+                                <div class="form-row">
+                                    <label for="annualBonus">Annual Lump Sum Payment ($)</label>
+                                    <input type="number" id="annualBonus" value="0" step="500">
+                                    <small class="field-note">Yearly lump sum applied to principal (e.g., tax refund, work bonus)</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="calculate-btn" onclick="calculate()">
+                            <span>Calculate & Compare</span>
+                            <span class="btn-icon">⚡</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="summary-card investment">
-                    <h3>📈 Hybrid Investment Strategy 
-                        <span class="help-icon" onclick="showTooltip('hybrid-strategy')" title="Click for detailed explanation">❓</span>
-                    </h3>
-                    <p class="strategy-description">Pay loan off early, then invest the total monthly payment amount (P&I + PMI + extra payments) for the remaining standard loan term.</p>
-                    <div class="investment-scenarios">
-                        <div class="scenario weak">
-                            <span class="scenario-title">🐻 Weak (4%)</span>
-                            <span class="scenario-value" id="weakReturn">-</span>
+                <!-- Summary Tab -->
+                <div id="summaryTab" class="tab-panel">
+                    <div class="results-section" id="resultsSection">
+                        <div class="calculation-methodology">
+                            <h3>📋 Calculation Methodology 
+                                <span class="help-icon" onclick="showTooltip('methodology')" title="Click for detailed explanation">❓</span>
+                            </h3>
                         </div>
-                        <div class="scenario average">
-                            <span class="scenario-title">📈 Average (7%)</span>
-                            <span class="scenario-value" id="averageReturn">-</span>
-                        </div>
-                        <div class="scenario strong">
-                            <span class="scenario-title">🚀 Strong (10%)</span>
-                            <span class="scenario-value" id="strongReturn">-</span>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="summary-card pure-investment">
-                    <h3>📊 Pure Investment Strategy 
-                        <span class="help-icon" onclick="showTooltip('pure-investment')" title="Click for detailed explanation">❓</span>
-                    </h3>
-                    <p class="strategy-description">Instead of making extra mortgage payments, invest only the extra principal amount for the full standard loan term period.</p>
-                    <div class="investment-scenarios">
-                        <div class="scenario weak">
-                            <span class="scenario-title">🐻 Weak (4%)</span>
-                            <span class="scenario-value" id="pureWeakReturn">-</span>
-                        </div>
-                        <div class="scenario average">
-                            <span class="scenario-title">📈 Average (7%)</span>
-                            <span class="scenario-value" id="pureAverageReturn">-</span>
-                        </div>
-                        <div class="scenario strong">
-                            <span class="scenario-title">🚀 Strong (10%)</span>
-                            <span class="scenario-value" id="pureStrongReturn">-</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                        <div class="summary-cards">
+                            <div class="summary-card payoff">
+                                <h3>🏠 Mortgage Payoff Strategy 
+                                    <span class="help-icon" onclick="showTooltip('payoff-strategy')" title="Click for detailed explanation">❓</span>
+                                </h3>
+                                <p class="strategy-description">Pay loan off early using extra principal payments. Shows total interest saved vs. standard payment schedule.</p>
+                                <div class="metric">
+                                    <span class="label">Standard Maturity:</span>
+                                    <span class="value" id="standardPayoffSummary">-</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="label">Accelerated Maturity:</span>
+                                    <span class="value" id="acceleratedPayoffSummary">-</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="label">Interest Saved:</span>
+                                    <span class="value" id="interestSaved">-</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="label">Total Interest Paid:</span>
+                                    <span class="value" id="totalInterestPaid">-</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="label">Total Lifetime Cost:</span>
+                                    <span class="value" id="totalMortgageCost">-</span>
+                                </div>
+                            </div>
 
-            <div class="comparison-table">
-                <h3>📋 Mortgage Payment Comparison 
-                    <span class="help-icon" onclick="showTooltip('mortgage-comparison')" title="Click for detailed explanation">❓</span>
-                </h3>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Metric</th>
-                                <th class="standard-column">🏠 Standard Payment</th>
-                                <th class="extra-column">⚡ With Extra Principal</th>
-                                <th class="savings-column">💰 Savings</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Maturity</td>
-                                <td id="standardPayoffDate">-</td>
-                                <td id="extraPayoffDate">-</td>
-                                <td id="timeSavedDetailed">-</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <strong>Total Mortgage Cost</strong><br>
-                                    <small style="color: var(--text-secondary);">Interest + Principal</small>
-                                </td>
-                                <td>
-                                    <div><strong id="standardTotalPaid">-</strong></div>
-                                    <small style="color: var(--text-secondary);">Interest: <span id="standardTotalInterest">-</span></small>
-                                </td>
-                                <td>
-                                    <div><strong id="extraTotalPaidDetailed">-</strong></div>
-                                    <small style="color: var(--text-secondary);">Interest: <span id="extraTotalInterest">-</span></small>
-                                </td>
-                                <td>
-                                    <strong id="totalSavedDetailed">-</strong>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Monthly Payment (P&I)</td>
-                                <td id="standardMonthlyPI">-</td>
-                                <td id="extraMonthlyPI">-</td>
-                                <td id="extraPrincipalAmount">-</td>
-                            </tr>
-                            <tr>
-                                <td>Remaining Term</td>
-                                <td id="standardRemainingTerm">-</td>
-                                <td id="extraRemainingTerm">-</td>
-                                <td class="combined-savings">See above</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                            <div class="summary-card investment">
+                                <h3>📈 Hybrid Investment Strategy 
+                                    <span class="help-icon" onclick="showTooltip('hybrid-strategy')" title="Click for detailed explanation">❓</span>
+                                </h3>
+                                <p class="strategy-description">Pay loan off early, then invest the total monthly payment amount (P&I + PMI + extra payments) for the remaining standard loan term.</p>
+                                <div class="investment-scenarios">
+                                    <div class="scenario weak">
+                                        <span class="scenario-title">🐻 Weak (4%)</span>
+                                        <span class="scenario-value" id="weakReturn">-</span>
+                                    </div>
+                                    <div class="scenario average">
+                                        <span class="scenario-title">📈 Average (7%)</span>
+                                        <span class="scenario-value" id="averageReturn">-</span>
+                                    </div>
+                                    <div class="scenario strong">
+                                        <span class="scenario-title">🚀 Strong (10%)</span>
+                                        <span class="scenario-value" id="strongReturn">-</span>
+                                    </div>
+                                </div>
+                            </div>
 
-            <div class="payment-scenarios-section">
-                <h3>💸 Extra Payment Impact Scenarios 
-                    <span class="help-icon" onclick="showTooltip('scenarios')" title="Click for detailed explanation">❓</span>
-                </h3>
-                <p class="chart-subtitle">See how different extra payment amounts affect your payoff timeline and interest savings</p>
-                
-                <div class="scenarios-toggle">
-                    <button id="monthlyToggle" class="toggle-btn active">📅 Monthly Extra</button>
-                    <button id="biweeklyToggle" class="toggle-btn">📋 Bi-Weekly Extra</button>
-                </div>
-                
-                <div class="scenarios-table-container">
-                    <table class="scenarios-table">
-                        <thead>
-                            <tr>
-                                <th>Extra Payment</th>
-                                <th>% of P&I</th>
-                                <th>Maturity</th>
-                                <th>Time Saved</th>
-                                <th>
-                                    Interest Impact
-                                    <br><small style="font-weight: 400; color: var(--text-secondary);">Saved & Comparison</small>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="paymentScenariosBody">
-                            <!-- Dynamic content will be inserted here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="biweekly-section">
-                <h3>📅 Bi-Weekly Payment Strategy 
-                    <span class="help-icon" onclick="showTooltip('biweekly')" title="Click for detailed explanation">❓</span>
-                </h3>
-                <p class="chart-subtitle">Make your regular monthly P&I payment PLUS bi-weekly extra principal payments (26 extra payments per year)</p>
-                
-                <div class="biweekly-comparison">
-                    <div class="payment-strategy monthly-strategy">
-                        <h4>🗓️ Monthly Payments</h4>
-                        <div class="strategy-details">
-                            <div class="detail-item">
-                                <span class="label">Payment Frequency:</span>
-                                <span class="value" id="monthlyFrequency">12 payments/year</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="label">Monthly Payment:</span>
-                                <span class="value" id="monthlyPaymentAmount">$0</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="label">Annual Payment:</span>
-                                <span class="value" id="monthlyAnnualTotal">$0</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="label">Maturity:</span>
-                                <span class="value" id="monthlyPayoffTime">0 years</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="label">Total Interest:</span>
-                                <span class="value" id="monthlyTotalInterest">$0</span>
+                            <div class="summary-card pure-investment">
+                                <h3>📊 Pure Investment Strategy 
+                                    <span class="help-icon" onclick="showTooltip('pure-investment')" title="Click for detailed explanation">❓</span>
+                                </h3>
+                                <p class="strategy-description">Instead of making extra mortgage payments, invest only the extra principal amount for the full standard loan term period.</p>
+                                <div class="investment-scenarios">
+                                    <div class="scenario weak">
+                                        <span class="scenario-title">🐻 Weak (4%)</span>
+                                        <span class="scenario-value" id="pureWeakReturn">-</span>
+                                    </div>
+                                    <div class="scenario average">
+                                        <span class="scenario-title">📈 Average (7%)</span>
+                                        <span class="scenario-value" id="pureAverageReturn">-</span>
+                                    </div>
+                                    <div class="scenario strong">
+                                        <span class="scenario-title">🚀 Strong (10%)</span>
+                                        <span class="scenario-value" id="pureStrongReturn">-</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="vs-divider">VS</div>
-
-                    <div class="payment-strategy biweekly-strategy">
-                        <h4>📋 Bi-Weekly Extra Payments</h4>
-                        <div class="strategy-details">
-                            <div class="detail-item">
-                                <span class="label">Payment Frequency:</span>
-                                <span class="value" id="biweeklyFrequency">Monthly P&I + 26 extra/year</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="label">Payment Structure:</span>
-                                <span class="value" id="biweeklyPaymentAmount">$0</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="label">Annual Payment:</span>
-                                <span class="value" id="biweeklyAnnualTotal">$0</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="label">Maturity:</span>
-                                <span class="value" id="biweeklyPayoffTime">0 years</span>
-                            </div>
-                            <div class="detail-item">
-                                <span class="label">Total Interest:</span>
-                                <span class="value" id="biweeklyTotalInterest">$0</span>
+                        <div class="comparison-table">
+                            <h3>📋 Mortgage Payment Comparison 
+                                <span class="help-icon" onclick="showTooltip('mortgage-comparison')" title="Click for detailed explanation">❓</span>
+                            </h3>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Metric</th>
+                                            <th class="standard-column">🏠 Standard Payment</th>
+                                            <th class="extra-column">⚡ With Extra Principal</th>
+                                            <th class="savings-column">💰 Savings</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Maturity</td>
+                                            <td id="standardPayoffDate">-</td>
+                                            <td id="extraPayoffDate">-</td>
+                                            <td id="timeSavedDetailed">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <strong>Total Mortgage Cost</strong><br>
+                                                <small style="color: var(--text-secondary);">Interest + Principal</small>
+                                            </td>
+                                            <td>
+                                                <div><strong id="standardTotalPaid">-</strong></div>
+                                                <small style="color: var(--text-secondary);">Interest: <span id="standardTotalInterest">-</span></small>
+                                            </td>
+                                            <td>
+                                                <div><strong id="extraTotalPaidDetailed">-</strong></div>
+                                                <small style="color: var(--text-secondary);">Interest: <span id="extraTotalInterest">-</span></small>
+                                            </td>
+                                            <td>
+                                                <strong id="totalSavedDetailed">-</strong>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Monthly Payment (P&I)</td>
+                                            <td id="standardMonthlyPI">-</td>
+                                            <td id="extraMonthlyPI">-</td>
+                                            <td id="extraPrincipalAmount">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Remaining Term</td>
+                                            <td id="standardRemainingTerm">-</td>
+                                            <td id="extraRemainingTerm">-</td>
+                                            <td class="combined-savings">See above</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="biweekly-savings">
-                    <h4>💰 Bi-Weekly Savings Summary</h4>
-                    <div class="savings-grid">
-                        <div class="savings-item time-savings">
-                            <span class="savings-label">Time Saved:</span>
-                            <span class="savings-value" id="biweeklyTimeSaved">0 years</span>
+                <!-- Scenarios Tab -->
+                <div id="scenariosTab" class="tab-panel">
+                    <div class="payment-scenarios-section">
+                        <h3>💸 Extra Payment Impact Scenarios 
+                            <span class="help-icon" onclick="showTooltip('scenarios')" title="Click for detailed explanation">❓</span>
+                        </h3>
+                        <p class="chart-subtitle">See how different extra payment amounts affect your payoff timeline and interest savings</p>
+                        
+                        <div class="scenarios-toggle">
+                            <button id="monthlyToggle" class="toggle-btn active">📅 Monthly Extra</button>
+                            <button id="biweeklyToggle" class="toggle-btn">📋 Bi-Weekly Extra</button>
                         </div>
-                        <div class="savings-item interest-savings">
-                            <span class="savings-label">Interest Saved:</span>
-                            <span class="savings-value" id="biweeklyInterestSaved">$0</span>
+                        
+                        <div class="scenarios-table-container">
+                            <table class="scenarios-table">
+                                <thead>
+                                    <tr>
+                                        <th>Extra Payment</th>
+                                        <th>% of P&I</th>
+                                        <th>Maturity</th>
+                                        <th>Time Saved</th>
+                                        <th>
+                                            Interest Impact
+                                            <br><small style="font-weight: 400; color: var(--text-secondary);">Saved & Comparison</small>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paymentScenariosBody">
+                                    <!-- Dynamic content will be inserted here -->
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="savings-item extra-payment">
-                            <span class="savings-label">Additional Bi-Weekly Impact:</span>
-                            <span class="savings-value" id="biweeklyEquivalentExtra">$0/month</span>
+                    </div>
+
+                    <div class="biweekly-section">
+                        <h3>📅 Bi-Weekly Payment Strategy 
+                            <span class="help-icon" onclick="showTooltip('biweekly')" title="Click for detailed explanation">❓</span>
+                        </h3>
+                        <p class="chart-subtitle">Make your regular monthly P&I payment PLUS bi-weekly extra principal payments (26 extra payments per year)</p>
+                        
+                        <div class="biweekly-comparison">
+                            <div class="payment-strategy monthly-strategy">
+                                <h4>🗓️ Monthly Payments</h4>
+                                <div class="strategy-details">
+                                    <div class="detail-item">
+                                        <span class="label">Payment Frequency:</span>
+                                        <span class="value" id="monthlyFrequency">12 payments/year</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="label">Monthly Payment:</span>
+                                        <span class="value" id="monthlyPaymentAmount">$0</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="label">Annual Payment:</span>
+                                        <span class="value" id="monthlyAnnualTotal">$0</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="label">Maturity:</span>
+                                        <span class="value" id="monthlyPayoffTime">0 years</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="label">Total Interest:</span>
+                                        <span class="value" id="monthlyTotalInterest">$0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="vs-divider">VS</div>
+
+                            <div class="payment-strategy biweekly-strategy">
+                                <h4>📋 Bi-Weekly Extra Payments</h4>
+                                <div class="strategy-details">
+                                    <div class="detail-item">
+                                        <span class="label">Payment Frequency:</span>
+                                        <span class="value" id="biweeklyFrequency">Monthly P&I + 26 extra/year</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="label">Payment Structure:</span>
+                                        <span class="value" id="biweeklyPaymentAmount">$0</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="label">Annual Payment:</span>
+                                        <span class="value" id="biweeklyAnnualTotal">$0</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="label">Maturity:</span>
+                                        <span class="value" id="biweeklyPayoffTime">0 years</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="label">Total Interest:</span>
+                                        <span class="value" id="biweeklyTotalInterest">$0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="biweekly-savings">
+                            <h4>💰 Bi-Weekly Savings Summary</h4>
+                            <div class="savings-grid">
+                                <div class="savings-item time-savings">
+                                    <span class="savings-label">Time Saved:</span>
+                                    <span class="savings-value" id="biweeklyTimeSaved">0 years</span>
+                                </div>
+                                <div class="savings-item interest-savings">
+                                    <span class="savings-label">Interest Saved:</span>
+                                    <span class="savings-value" id="biweeklyInterestSaved">$0</span>
+                                </div>
+                                <div class="savings-item extra-payment">
+                                    <span class="savings-label">Additional Bi-Weekly Impact:</span>
+                                    <span class="savings-value" id="biweeklyEquivalentExtra">$0/month</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="chart-container">
-                <h3>📊 Balance Projection Over Time</h3>
-                <canvas id="balanceChart"></canvas>
-            </div>
-            
-            <div class="chart-container">
-                <h3>⚖️ Payoff vs Investment Strategy Comparison</h3>
-                <p class="chart-subtitle">Net gains from mortgage payoff vs investing extra principal only</p>
-                <canvas id="strategyChart"></canvas>
-            </div>
+                <!-- Charts Tab -->
+                <div id="chartsTab" class="tab-panel">
+                    <div class="chart-container">
+                        <h3>📊 Balance Projection Over Time</h3>
+                        <p class="chart-subtitle">Track your mortgage balance and equity growth over time with different payment strategies</p>
+                        <canvas id="balanceChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <h3>⚖️ Payoff vs Investment Strategy Comparison</h3>
+                        <p class="chart-subtitle">Net gains from mortgage payoff vs investing extra principal only</p>
+                        <canvas id="strategyChart"></canvas>
+                    </div>
 
-            <div class="chart-container">
-                <h3>🎯 Hybrid Strategy: Payoff + Investment</h3>
-                <p class="chart-subtitle">Interest savings from early payoff + investment growth after mortgage is paid off</p>
-                <canvas id="comparisonChart"></canvas>
-            </div>
+                    <div class="chart-container">
+                        <h3>🎯 Hybrid Strategy: Payoff + Investment</h3>
+                        <p class="chart-subtitle">Interest savings from early payoff + investment growth after mortgage is paid off</p>
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
 
-            <div class="chart-container">
-                <h3>💰 Pure Investment Strategy Over Full Term</h3>
-                <p class="chart-subtitle">Complete investment timeline: investing extra payments for the full original loan term</p>
-                <canvas id="pureInvestmentChart"></canvas>
+                    <div class="chart-container">
+                        <h3>💰 Pure Investment Strategy Over Full Term</h3>
+                        <p class="chart-subtitle">Complete investment timeline: investing extra payments for the full original loan term</p>
+                        <canvas id="pureInvestmentChart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
