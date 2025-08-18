@@ -739,9 +739,6 @@ function calculate(autoRun = false) {
     // Results are now always visible in tab structure
     // Switch to summary tab automatically after calculation (only for manual calculations)
     if (!autoRun) {
-        // Dismiss example notice when user runs their own calculation
-        dismissExampleNotice();
-        
         setTimeout(() => {
             const summaryTabBtn = document.querySelector('[onclick*="summaryTab"]');
             if (summaryTabBtn) {
@@ -2722,20 +2719,7 @@ function openTab(evt, tabName) {
     evt.currentTarget.classList.add('active');
 }
 
-// Example notice functions
-function showExampleNotice() {
-    const notice = document.getElementById('exampleNotice');
-    if (notice) {
-        notice.style.display = 'block';
-    }
-}
 
-function dismissExampleNotice() {
-    const notice = document.getElementById('exampleNotice');
-    if (notice) {
-        notice.style.display = 'none';
-    }
-}
 
 // Add some sample data on load for demo purposes
 window.addEventListener('load', function() {
@@ -2748,11 +2732,6 @@ window.addEventListener('load', function() {
         if (typeof calculate === 'function') {
             console.log('Running automatic calculation with default values...');
             calculate(true); // Pass true to indicate this is an auto-run
-            
-            // Show example notice after calculation completes
-            setTimeout(() => {
-                showExampleNotice();
-            }, 1000);
         }
     }, 500); // Small delay to ensure all DOM elements are ready
 });
