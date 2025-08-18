@@ -1,8 +1,7 @@
 // Global variables
 let balanceChart = null;
 let comparisonChart = null;
-let strategyChart = null;
-let pureInvestmentChart = null;
+let combinedStrategyChart = null;
 
 // Initialize theme
 function initializeTheme() {
@@ -241,6 +240,7 @@ function toggleTheme() {
     if (comparisonChart) updateChartTheme(comparisonChart);
     if (strategyChart) updateChartTheme(strategyChart);
     if (pureInvestmentChart) updateChartTheme(pureInvestmentChart);
+    if (combinedStrategyChart) updateChartTheme(combinedStrategyChart);
 }
 
 function updateThemeIcon(theme) {
@@ -260,6 +260,11 @@ function updateChartTheme(chart) {
     chart.options.scales.y.grid.color = gridColor;
     chart.options.scales.x.title.color = textColor;
     chart.options.scales.y.title.color = textColor;
+    
+    // Update title color if the chart has a title
+    if (chart.options.plugins.title && chart.options.plugins.title.display) {
+        chart.options.plugins.title.color = textColor;
+    }
     
     chart.update();
 }
@@ -512,6 +517,41 @@ function calculateInvestmentGrowth(monthlyInvestment, annualReturn, months, annu
     };
 }
 
+function calculateDynamicTaxRate(holdingPeriodMonths, annualIncome = null) {
+    // Default to median household income if not provided
+    const estimatedAnnualIncome = annualIncome || 70000;
+    
+    // Short-term capital gains (< 12 months) = ordinary income tax rates
+    if (holdingPeriodMonths < 12) {
+        if (estimatedAnnualIncome <= 11000) return 10;
+        if (estimatedAnnualIncome <= 44725) return 12;
+        if (estimatedAnnualIncome <= 95375) return 22;
+        if (estimatedAnnualIncome <= 182050) return 24;
+        if (estimatedAnnualIncome <= 231250) return 32;
+        if (estimatedAnnualIncome <= 578125) return 35;
+        return 37; // Highest bracket
+    }
+    
+    // Long-term capital gains (≥ 12 months)
+    if (estimatedAnnualIncome <= 44625) return 0;  // 0% bracket
+    if (estimatedAnnualIncome <= 492300) return 15; // 15% bracket
+    return 20; // 20% bracket for high earners
+}
+
+function getEstimatedIncomeFromMortgage() {
+    // Rough estimate based on mortgage payment (general rule: housing should be ~28% of gross income)
+    const currentPayment = parseFloat(document.getElementById('currentPayment').value) || 0;
+    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+    const totalHousingPayment = currentPayment + monthlyPMI + 500; // Add estimated taxes/insurance
+    
+    // Assume housing is 28% of gross income
+    const estimatedMonthlyIncome = totalHousingPayment / 0.28;
+    const estimatedAnnualIncome = estimatedMonthlyIncome * 12;
+    
+    // Cap at reasonable bounds
+    return Math.min(Math.max(estimatedAnnualIncome, 40000), 500000);
+}
+
 function calculateHybridStrategy(acceleratedPayoff, extraPayment, standardTotalMonths, annualReturn, annualBonus) {
     // Phase 1: Interest saved from early payoff (already calculated)
     const interestSaved = acceleratedPayoff.interestSavings || 0;
@@ -623,7 +663,11 @@ function calculatePMI() {
 
 function calculate(autoRun = false) {
     const button = document.querySelector('.calculate-btn');
-    button.classList.add('loading');
+    
+    // Only show loading animation if this is a user-initiated calculation
+    if (!autoRun) {
+        button.classList.add('loading');
+    }
     
     // Get input values
     const currentPayment = parseFloat(document.getElementById('currentPayment').value);
@@ -644,7 +688,9 @@ function calculate(autoRun = false) {
         isNaN(originalBalance) || isNaN(remainingBalance) || isNaN(interestRate) || 
         isNaN(originalTerm) || !remainingTerm) {
         alert('Please fill in all required fields with valid numbers and ensure loan start date is entered.');
-        button.classList.remove('loading');
+        if (!autoRun) {
+            button.classList.remove('loading');
+        }
         return;
     }
     
@@ -732,9 +778,7 @@ function calculate(autoRun = false) {
     
     // Create charts
     createBalanceChart(standardPayoff, acceleratedPayoff);
-    createStrategyChart(acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment);
-    createComparisonChart(acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment);
-    createPureInvestmentChart(standardPayoff, weakInvestment, averageInvestment, strongInvestment);
+    createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weakInvestment, averageInvestment, strongInvestment);
     
     // Results are now always visible in tab structure
     // Switch to summary tab automatically after calculation (only for manual calculations)
@@ -747,9 +791,12 @@ function calculate(autoRun = false) {
         }, 100);
     }
     
-    setTimeout(() => {
-        button.classList.remove('loading');
-    }, 500);
+    // Only remove loading state if it was added (not during auto-run)
+    if (!autoRun) {
+        setTimeout(() => {
+            button.classList.remove('loading');
+        }, 500);
+    }
 }
 
 function updateSummaryCards(standard, accelerated, weak, average, strong, hybridWeak, hybridAverage, hybridStrong) {
@@ -844,12 +891,33 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
     document.getElementById('totalInterestPaid').textContent = formatCurrency(totalInterestDisplay);
     document.getElementById('totalMortgageCost').textContent = formatCurrency(totalMortgageCostDisplay);
     
-    // Show hybrid strategy results (payoff early + invest remaining years)
-    document.getElementById('weakReturn').textContent = formatCurrency(hybridWeak.totalBenefit);
-    document.getElementById('averageReturn').textContent = formatCurrency(hybridAverage.totalBenefit);
-    document.getElementById('strongReturn').textContent = formatCurrency(hybridStrong.totalBenefit);
+    // Show hybrid strategy results (payoff early + invest remaining years) with after-tax calculations
+    const hybridScenarios = [
+        { data: hybridWeak, id: 'weakReturn' },
+        { data: hybridAverage, id: 'averageReturn' },
+        { data: hybridStrong, id: 'strongReturn' }
+    ];
     
-    // Calculate after-tax gains for pure investment strategy
+    const estimatedIncome = getEstimatedIncomeFromMortgage();
+    
+    hybridScenarios.forEach(scenario => {
+        // Interest saved is tax-free, but apply capital gains tax to investment portion
+        const interestSaved = scenario.data.interestSaved;
+        const investmentGrowth = calculateInvestmentGrowth(scenario.data.totalMonthlyInvestment, 
+            scenario.data === hybridWeak ? 4 : (scenario.data === hybridAverage ? 7 : 10), 
+            scenario.data.remainingMonths, annualBonus);
+        
+        // Use dynamic tax rate based on investment holding period
+        const dynamicTaxRate = calculateDynamicTaxRate(scenario.data.remainingMonths, estimatedIncome);
+        const investmentGains = investmentGrowth.totalGains;
+        const tax = investmentGains * (dynamicTaxRate / 100);
+        const afterTaxInvestmentValue = investmentGrowth.totalContributions + (investmentGains - tax);
+        const totalAfterTaxBenefit = interestSaved + afterTaxInvestmentValue;
+        
+        document.getElementById(scenario.id).textContent = formatCurrency(totalAfterTaxBenefit);
+    });
+    
+    // Calculate after-tax gains for pure investment strategy with dynamic tax rates
     const pureInvestmentScenarios = [
         { data: weak, id: 'pureWeakReturn' },
         { data: average, id: 'pureAverageReturn' },
@@ -857,9 +925,12 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
     ];
     
     pureInvestmentScenarios.forEach(scenario => {
-        // Calculate capital gains tax on investment gains
+        // Calculate capital gains tax on investment gains using dynamic rate
+        // Use the schedule length from the investment data itself
+        const investmentPeriodMonths = scenario.data.schedule ? scenario.data.schedule.length : 360; // fallback to 30 years
+        const fullTermTaxRate = calculateDynamicTaxRate(investmentPeriodMonths, estimatedIncome);
         const investmentGains = scenario.data.totalGains;
-        const tax = investmentGains * (taxRate / 100);
+        const tax = investmentGains * (fullTermTaxRate / 100);
         const afterTaxGains = investmentGains - tax;
         const totalAfterTaxValue = scenario.data.totalContributions + afterTaxGains;
         
@@ -1030,7 +1101,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     borderWidth: 3,
                     fill: true,
-                    tension: 0.1,
+                    tension: 0.4,
                     yAxisID: 'y'
                 },
                 {
@@ -1040,7 +1111,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     borderWidth: 3,
                     fill: true,
-                    tension: 0.1,
+                    tension: 0.4,
                     yAxisID: 'y'
                 },
                 {
@@ -1050,7 +1121,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(139, 92, 246, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1,
+                    tension: 0.4,
                     borderDash: [3, 3],
                     yAxisID: 'y'
                 },
@@ -1061,7 +1132,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(6, 182, 212, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1,
+                    tension: 0.4,
                     borderDash: [3, 3],
                     yAxisID: 'y'
                 },
@@ -1072,7 +1143,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(245, 158, 11, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1,
+                    tension: 0.4,
                     borderDash: [5, 5],
                     yAxisID: 'y1'
                 },
@@ -1083,7 +1154,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1,
+                    tension: 0.4,
                     borderDash: [5, 5],
                     yAxisID: 'y1'
                 }
@@ -1709,6 +1780,336 @@ function createPureInvestmentChart(standardPayoff, weak, average, strong) {
     });
 }
 
+function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, average, strong) {
+    const ctx = document.getElementById('combinedStrategyChart').getContext('2d');
+    
+    if (combinedStrategyChart) {
+        combinedStrategyChart.destroy();
+    }
+    
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? '#f1f5f9' : '#1e293b';
+    const gridColor = isDark ? '#475569' : '#e2e8f0';
+    
+    const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
+    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
+    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
+    const interestRate = parseFloat(document.getElementById('interestRate').value);
+    const currentPayment = parseFloat(document.getElementById('currentPayment').value);
+    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+    
+    // Use the full original loan term timeline
+    const timelineMonths = standardPayoff.monthsToPayoff;
+    const payoffMonth = acceleratedPayoff.monthsToPayoff;
+    
+    // Create date labels starting from current date
+    const currentDate = new Date();
+    const dateLabels = [];
+    for (let i = 0; i < timelineMonths; i++) {
+        const futureDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + i + 1, 1);
+        dateLabels.push(futureDate.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'short'
+        }));
+    }
+    
+    // Calculate interest savings accumulation during payoff period
+    const interestSavedTotal = getHistoricalAdjustedInterestSavings(standardPayoff, acceleratedPayoff);
+    
+    // Calculate investment amounts for hybrid strategy
+    const totalMonthlyPayment = currentPayment + extraPrincipal;
+    const totalMonthlyInvestment = totalMonthlyPayment + monthlyPMI; // Invest what was the full payment
+    const investmentMonths = timelineMonths - payoffMonth;
+    
+    // Build data arrays
+    const hybridWeakLine = [];
+    const hybridAverageLine = [];
+    const hybridStrongLine = [];
+    const pureWeakLine = [];
+    const pureAverageLine = [];
+    const pureStrongLine = [];
+    
+    for (let month = 1; month <= timelineMonths; month++) {
+        // Hybrid strategy logic
+        if (month <= payoffMonth) {
+            // During payoff period: show flat line at total interest savings amount
+            hybridWeakLine.push(interestSavedTotal);
+            hybridAverageLine.push(interestSavedTotal);
+            hybridStrongLine.push(interestSavedTotal);
+        } else {
+            // After payoff: add investment growth to interest savings
+            const investmentPeriod = month - payoffMonth;
+            
+            // Calculate compound growth for investment portion using correct function signature
+            const weakGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 4, investmentPeriod, 0);
+            const averageGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 7, investmentPeriod, 0);
+            const strongGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 10, investmentPeriod, 0);
+            
+            // Apply dynamic capital gains tax based on holding period
+            const estimatedIncome = getEstimatedIncomeFromMortgage();
+            const taxRate = calculateDynamicTaxRate(investmentPeriod, estimatedIncome);
+            const weakAfterTax = weakGrowth.totalContributions + (weakGrowth.totalGains * (1 - taxRate/100));
+            const averageAfterTax = averageGrowth.totalContributions + (averageGrowth.totalGains * (1 - taxRate/100));
+            const strongAfterTax = strongGrowth.totalContributions + (strongGrowth.totalGains * (1 - taxRate/100));
+            
+            hybridWeakLine.push(interestSavedTotal + weakAfterTax);
+            hybridAverageLine.push(interestSavedTotal + averageAfterTax);
+            hybridStrongLine.push(interestSavedTotal + strongAfterTax);
+        }
+        
+        // Pure investment strategy: invest only extra principal for full term
+        if (extraPrincipal > 0) {
+            const pureWeakGrowth = calculateInvestmentGrowth(extraPrincipal, 4, month, annualBonus);
+            const pureAverageGrowth = calculateInvestmentGrowth(extraPrincipal, 7, month, annualBonus);
+            const pureStrongGrowth = calculateInvestmentGrowth(extraPrincipal, 10, month, annualBonus);
+            
+            // Apply dynamic capital gains tax based on full holding period
+            const estimatedIncome = getEstimatedIncomeFromMortgage();
+            const pureTaxRate = calculateDynamicTaxRate(month, estimatedIncome);
+            const pureWeakAfterTax = pureWeakGrowth.totalContributions + (pureWeakGrowth.totalGains * (1 - pureTaxRate/100));
+            const pureAverageAfterTax = pureAverageGrowth.totalContributions + (pureAverageGrowth.totalGains * (1 - pureTaxRate/100));
+            const pureStrongAfterTax = pureStrongGrowth.totalContributions + (pureStrongGrowth.totalGains * (1 - pureTaxRate/100));
+            
+            pureWeakLine.push(pureWeakAfterTax);
+            pureAverageLine.push(pureAverageAfterTax);
+            pureStrongLine.push(pureStrongAfterTax);
+        } else {
+            // No extra principal means no pure investment strategy
+            pureWeakLine.push(0);
+            pureAverageLine.push(0);
+            pureStrongLine.push(0);
+        }
+    }
+    
+    const datasets = [
+        {
+            label: 'Hybrid Strategy - Weak Market (4%)',
+            data: hybridWeakLine,
+            borderColor: 'rgba(239, 68, 68, 0.8)',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            fill: false,
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 0
+        },
+        {
+            label: 'Hybrid Strategy - Average Market (7%)',
+            data: hybridAverageLine,
+            borderColor: 'rgba(59, 130, 246, 0.8)',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: false,
+            tension: 0.4,
+            borderWidth: 3,
+            pointRadius: 0
+        },
+        {
+            label: 'Hybrid Strategy - Strong Market (10%)',
+            data: hybridStrongLine,
+            borderColor: 'rgba(34, 197, 94, 0.8)',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            fill: false,
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 0
+        }
+    ];
+    
+    // Only add pure investment lines if there's extra principal
+    if (extraPrincipal > 0) {
+        datasets.push(
+            {
+                label: 'Pure Investment - Weak Market (4%)',
+                data: pureWeakLine,
+                borderColor: 'rgba(239, 68, 68, 0.4)',
+                backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                fill: false,
+                tension: 0.4,
+                borderWidth: 1,
+                borderDash: [5, 5],
+                pointRadius: 0
+            },
+            {
+                label: 'Pure Investment - Average Market (7%)',
+                data: pureAverageLine,
+                borderColor: 'rgba(59, 130, 246, 0.4)',
+                backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                fill: false,
+                tension: 0.4,
+                borderWidth: 1,
+                borderDash: [5, 5],
+                pointRadius: 0
+            },
+            {
+                label: 'Pure Investment - Strong Market (10%)',
+                data: pureStrongLine,
+                borderColor: 'rgba(34, 197, 94, 0.4)',
+                backgroundColor: 'rgba(34, 197, 94, 0.05)',
+                fill: false,
+                tension: 0.4,
+                borderWidth: 1,
+                borderDash: [5, 5],
+                pointRadius: 0
+            }
+        );
+    }
+    
+    combinedStrategyChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dateLabels,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Complete Financial Strategy Comparison',
+                    color: textColor,
+                    font: {
+                        size: 16,
+                        weight: 'bold'
+                    }
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: textColor,
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed.y;
+                            return context.dataset.label + ': $' + value.toLocaleString(undefined, {maximumFractionDigits: 0});
+                        },
+                        afterBody: function(tooltipItems) {
+                            const monthIndex = tooltipItems[0].dataIndex + 1;
+                            const estimatedIncome = getEstimatedIncomeFromMortgage();
+                            
+                            if (monthIndex <= payoffMonth) {
+                                const hybridTaxRate = calculateDynamicTaxRate(0, estimatedIncome); // No investment yet
+                                const pureTaxRate = calculateDynamicTaxRate(monthIndex, estimatedIncome);
+                                return [
+                                    'Phase: Mortgage Payoff Period', 
+                                    'Hybrid: Accumulating interest savings (tax-free)', 
+                                    `Pure: Growing investment (${pureTaxRate}% tax rate)`
+                                ];
+                            } else {
+                                const investmentPeriod = monthIndex - payoffMonth;
+                                const hybridTaxRate = calculateDynamicTaxRate(investmentPeriod, estimatedIncome);
+                                const pureTaxRate = calculateDynamicTaxRate(monthIndex, estimatedIncome);
+                                return [
+                                    'Phase: Post-Payoff Investment Growth', 
+                                    `Hybrid: Interest savings + investment growth (${hybridTaxRate}% tax rate)`, 
+                                    `Pure: Continued investment growth (${pureTaxRate}% tax rate)`
+                                ];
+                            }
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Timeline',
+                        color: textColor
+                    },
+                    ticks: {
+                        color: textColor,
+                        maxTicksLimit: 10
+                    },
+                    grid: {
+                        color: gridColor
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Cumulative Financial Benefit ($)',
+                        color: textColor
+                    },
+                    ticks: {
+                        color: textColor,
+                        callback: function(value) {
+                            return '$' + value.toLocaleString();
+                        }
+                    },
+                    grid: {
+                        color: gridColor
+                    }
+                }
+            },
+            // Add a vertical line at payoff date
+            plugins: [{
+                beforeDraw: function(chart) {
+                    if (payoffMonth < timelineMonths) {
+                        const ctx = chart.ctx;
+                        const chartArea = chart.chartArea;
+                        const xScale = chart.scales.x;
+                        
+                        const payoffX = xScale.getPixelForValue(payoffMonth - 1);
+                        
+                        // Add shaded area for payoff phase
+                        ctx.save();
+                        ctx.fillStyle = isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)';
+                        ctx.fillRect(chartArea.left, chartArea.top, payoffX - chartArea.left, chartArea.bottom - chartArea.top);
+                        
+                        // Add shaded area for investment phase
+                        ctx.fillStyle = isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)';
+                        ctx.fillRect(payoffX, chartArea.top, chartArea.right - payoffX, chartArea.bottom - chartArea.top);
+                        
+                        // Add vertical divider line
+                        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)';
+                        ctx.lineWidth = 3;
+                        ctx.setLineDash([]);
+                        ctx.beginPath();
+                        ctx.moveTo(payoffX, chartArea.top);
+                        ctx.lineTo(payoffX, chartArea.bottom);
+                        ctx.stroke();
+                        
+                        ctx.restore();
+                        
+                        // Add phase labels
+                        ctx.save();
+                        ctx.fillStyle = textColor;
+                        ctx.font = 'bold 14px Arial';
+                        ctx.textAlign = 'center';
+                        
+                        // Payoff phase label
+                        const payoffPhaseX = chartArea.left + (payoffX - chartArea.left) / 2;
+                        ctx.fillText('🏠 PAYOFF PHASE', payoffPhaseX, chartArea.top - 15);
+                        ctx.font = '12px Arial';
+                        ctx.fillText('Interest Savings', payoffPhaseX, chartArea.top - 2);
+                        
+                        // Investment phase label
+                        const investmentPhaseX = payoffX + (chartArea.right - payoffX) / 2;
+                        ctx.font = 'bold 14px Arial';
+                        ctx.fillText('📈 INVESTMENT PHASE', investmentPhaseX, chartArea.top - 15);
+                        ctx.font = '12px Arial';
+                        ctx.fillText('Compound Growth', investmentPhaseX, chartArea.top - 2);
+                        
+                        ctx.restore();
+                    }
+                }
+            }]
+        }
+    });
+}
+
 function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTermMonths, mode = 'monthly', currentPayment = null) {
     const scenariosBody = document.getElementById('paymentScenariosBody');
     
@@ -1869,7 +2270,6 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
             
         row.innerHTML = `
             <td>${totalPaymentDisplay}${currentPaymentIndicator}</td>
-            <td>${percentageOfPI}%</td>
             <td>${formatPayoffDate(payoff.monthsToPayoff)}</td>
             <td class="time-saved">${yearsSaved > 0 ? yearsSaved + 'y ' : ''}${monthsSaved}m</td>
             <td class="interest-saved">${interestBreakdown}</td>

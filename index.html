@@ -289,7 +289,6 @@
                                 <thead>
                                     <tr>
                                         <th>Extra Payment</th>
-                                        <th>% of P&I</th>
                                         <th>Maturity</th>
                                         <th>Time Saved</th>
                                         <th>
@@ -390,27 +389,15 @@
                 <!-- Charts Tab -->
                 <div id="chartsTab" class="tab-panel">
                     <div class="chart-container">
-                        <h3>📊 Balance Projection Over Time</h3>
+                        <h3>📊 Loan Amortization Schedules</h3>
                         <p class="chart-subtitle">Track your mortgage balance and equity growth over time with different payment strategies</p>
                         <canvas id="balanceChart"></canvas>
                     </div>
                     
                     <div class="chart-container">
-                        <h3>⚖️ Payoff vs Investment Strategy Comparison</h3>
-                        <p class="chart-subtitle">Net gains from mortgage payoff vs investing extra principal only</p>
-                        <canvas id="strategyChart"></canvas>
-                    </div>
-
-                    <div class="chart-container">
-                        <h3>🎯 Hybrid Strategy: Payoff + Investment</h3>
-                        <p class="chart-subtitle">Interest savings from early payoff + investment growth after mortgage is paid off</p>
-                        <canvas id="comparisonChart"></canvas>
-                    </div>
-
-                    <div class="chart-container">
-                        <h3>💰 Pure Investment Strategy Over Full Term</h3>
-                        <p class="chart-subtitle">Complete investment timeline: investing extra payments for the full original loan term</p>
-                        <canvas id="pureInvestmentChart"></canvas>
+                        <h3>💰 Complete Strategy Comparison Over Full Term (Dynamic Tax Rates)</h3>
+                        <p class="chart-subtitle">Interest savings + hybrid investment vs pure investment strategy with realistic capital gains tax rates based on holding period and estimated income</p>
+                        <canvas id="combinedStrategyChart"></canvas>
                     </div>
                 </div>
             </div>
