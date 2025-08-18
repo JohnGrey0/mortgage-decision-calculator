@@ -987,7 +987,6 @@ header h1 .title-text {
 }
 
 .payment-scenarios-section {
-    margin: 3rem 0;
     background: var(--card-color);
     border-radius: 16px;
     padding: 2rem;
