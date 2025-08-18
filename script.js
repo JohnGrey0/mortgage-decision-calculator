@@ -1,6 +1,8 @@
 // Global variables
 let balanceChart = null;
 let comparisonChart = null;
+let strategyChart = null;
+let pureInvestmentChart = null;
 let combinedStrategyChart = null;
 
 // Initialize theme
@@ -235,7 +237,7 @@ function toggleTheme() {
     localStorage.setItem('theme', newTheme);
     updateThemeIcon(newTheme);
     
-    // Update charts if they exist
+    // Update charts if they exist - all will now update immediately
     if (balanceChart) updateChartTheme(balanceChart);
     if (comparisonChart) updateChartTheme(comparisonChart);
     if (strategyChart) updateChartTheme(strategyChart);
@@ -249,24 +251,62 @@ function updateThemeIcon(theme) {
 }
 
 function updateChartTheme(chart) {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#f1f5f9' : '#1e293b';
-    const gridColor = isDark ? '#475569' : '#e2e8f0';
+    // More robust theme detection
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const isDark = currentTheme === 'dark';
     
-    chart.options.plugins.legend.labels.color = textColor;
-    chart.options.scales.x.ticks.color = textColor;
-    chart.options.scales.y.ticks.color = textColor;
-    chart.options.scales.x.grid.color = gridColor;
-    chart.options.scales.y.grid.color = gridColor;
-    chart.options.scales.x.title.color = textColor;
-    chart.options.scales.y.title.color = textColor;
+    // Explicit color assignment
+    let textColor, gridColor;
+    if (isDark) {
+        textColor = '#f1f5f9';  // Light text for dark theme
+        gridColor = '#475569';  // Medium gray for dark theme
+    } else {
+        textColor = '#1e293b';  // Dark text for light theme  
+        gridColor = '#e2e8f0';  // Light gray for light theme
+    }
     
-    // Update title color if the chart has a title
-    if (chart.options.plugins.title && chart.options.plugins.title.display) {
+    // Update legend
+    if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+        chart.options.plugins.legend.labels.color = textColor;
+    }
+    
+    // Update title
+    if (chart.options.plugins && chart.options.plugins.title && chart.options.plugins.title.display) {
         chart.options.plugins.title.color = textColor;
     }
     
-    chart.update();
+    // Update tooltip colors
+    if (chart.options.plugins && chart.options.plugins.tooltip) {
+        chart.options.plugins.tooltip.backgroundColor = isDark ? '#334155' : '#ffffff';
+        chart.options.plugins.tooltip.titleColor = textColor;
+        chart.options.plugins.tooltip.bodyColor = textColor;
+        chart.options.plugins.tooltip.borderColor = gridColor;
+    }
+    
+    // Update all scales (x, y, y1, etc.)
+    if (chart.options.scales) {
+        Object.keys(chart.options.scales).forEach(scaleKey => {
+            const scale = chart.options.scales[scaleKey];
+            if (scale) {
+                // Update ticks color
+                if (scale.ticks) {
+                    scale.ticks.color = textColor;
+                }
+                // Update grid color
+                if (scale.grid) {
+                    scale.grid.color = gridColor;
+                }
+                // Update title color
+                if (scale.title) {
+                    scale.title.color = textColor;
+                }
+            }
+        });
+    }
+    
+    // Force immediate and complete update
+    chart.update('none'); // Update the configuration
+    chart.render();       // Force complete redraw
 }
 
 // Mortgage calculation functions
@@ -1787,9 +1827,19 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
         combinedStrategyChart.destroy();
     }
     
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#f1f5f9' : '#1e293b';
-    const gridColor = isDark ? '#475569' : '#e2e8f0';
+    // More robust theme detection
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const isDark = currentTheme === 'dark';
+    
+    // Explicit color assignment with fallback
+    let textColor, gridColor;
+    if (isDark) {
+        textColor = '#f1f5f9';  // Light text for dark theme
+        gridColor = '#475569';  // Medium gray for dark theme
+    } else {
+        textColor = '#1e293b';  // Dark text for light theme
+        gridColor = '#e2e8f0';  // Light gray for light theme
+    }
     
     const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
     const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
@@ -3130,7 +3180,6 @@ window.addEventListener('load', function() {
     // so users can see example results in all tabs immediately
     setTimeout(() => {
         if (typeof calculate === 'function') {
-            console.log('Running automatic calculation with default values...');
             calculate(true); // Pass true to indicate this is an auto-run
         }
     }, 500); // Small delay to ensure all DOM elements are ready
