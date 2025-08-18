@@ -240,6 +240,7 @@ function toggleTheme() {
     if (comparisonChart) updateChartTheme(comparisonChart);
     if (strategyChart) updateChartTheme(strategyChart);
     if (pureInvestmentChart) updateChartTheme(pureInvestmentChart);
+    if (combinedStrategyChart) updateChartTheme(combinedStrategyChart);
 }
 
 function updateThemeIcon(theme) {
@@ -259,6 +260,11 @@ function updateChartTheme(chart) {
     chart.options.scales.y.grid.color = gridColor;
     chart.options.scales.x.title.color = textColor;
     chart.options.scales.y.title.color = textColor;
+    
+    // Update title color if the chart has a title
+    if (chart.options.plugins.title && chart.options.plugins.title.display) {
+        chart.options.plugins.title.color = textColor;
+    }
     
     chart.update();
 }
@@ -657,7 +663,11 @@ function calculatePMI() {
 
 function calculate(autoRun = false) {
     const button = document.querySelector('.calculate-btn');
-    button.classList.add('loading');
+    
+    // Only show loading animation if this is a user-initiated calculation
+    if (!autoRun) {
+        button.classList.add('loading');
+    }
     
     // Get input values
     const currentPayment = parseFloat(document.getElementById('currentPayment').value);
@@ -678,7 +688,9 @@ function calculate(autoRun = false) {
         isNaN(originalBalance) || isNaN(remainingBalance) || isNaN(interestRate) || 
         isNaN(originalTerm) || !remainingTerm) {
         alert('Please fill in all required fields with valid numbers and ensure loan start date is entered.');
-        button.classList.remove('loading');
+        if (!autoRun) {
+            button.classList.remove('loading');
+        }
         return;
     }
     
@@ -779,9 +791,12 @@ function calculate(autoRun = false) {
         }, 100);
     }
     
-    setTimeout(() => {
-        button.classList.remove('loading');
-    }, 500);
+    // Only remove loading state if it was added (not during auto-run)
+    if (!autoRun) {
+        setTimeout(() => {
+            button.classList.remove('loading');
+        }, 500);
+    }
 }
 
 function updateSummaryCards(standard, accelerated, weak, average, strong, hybridWeak, hybridAverage, hybridStrong) {
@@ -1086,7 +1101,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     borderWidth: 3,
                     fill: true,
-                    tension: 0.1,
+                    tension: 0.4,
                     yAxisID: 'y'
                 },
                 {
@@ -1096,7 +1111,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     borderWidth: 3,
                     fill: true,
-                    tension: 0.1,
+                    tension: 0.4,
                     yAxisID: 'y'
                 },
                 {
@@ -1106,7 +1121,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(139, 92, 246, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1,
+                    tension: 0.4,
                     borderDash: [3, 3],
                     yAxisID: 'y'
                 },
@@ -1117,7 +1132,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(6, 182, 212, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1,
+                    tension: 0.4,
                     borderDash: [3, 3],
                     yAxisID: 'y'
                 },
@@ -1128,7 +1143,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(245, 158, 11, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1,
+                    tension: 0.4,
                     borderDash: [5, 5],
                     yAxisID: 'y1'
                 },
@@ -1139,7 +1154,7 @@ function createBalanceChart(standard, accelerated) {
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderWidth: 2,
                     fill: false,
-                    tension: 0.1,
+                    tension: 0.4,
                     borderDash: [5, 5],
                     yAxisID: 'y1'
                 }
