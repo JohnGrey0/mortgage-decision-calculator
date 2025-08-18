@@ -277,15 +277,17 @@ body {
 
 header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     margin-bottom: 3rem;
     padding: 1.5rem 0;
+    position: relative;
 }
 
 header h1 {
     font-size: 2.5rem;
     font-weight: 700;
+    text-align: center;
 }
 
 header h1 .title-text {
@@ -307,6 +309,8 @@ header h1 .title-text {
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
+    position: absolute;
+    right: 0;
 }
 
 .theme-toggle:hover {
