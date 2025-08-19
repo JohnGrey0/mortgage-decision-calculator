@@ -1356,3 +1356,95 @@ header h1 .title-text {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
+/* ===== DISCLAIMER STYLES ===== */
+.disclaimer-banner {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    color: var(--text-primary);
+    padding: 16px 20px;
+    margin: 20px auto;
+    max-width: 1200px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.disclaimer-content h3 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary-color);
+}
+
+.disclaimer-content p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.disclaimer-footer {
+    background: var(--surface-color);
+    border-top: 2px solid var(--border-color);
+    margin-top: 40px;
+    padding: 30px 20px;
+    text-align: left;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.footer-content h4 {
+    color: var(--primary-color);
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.footer-content p {
+    margin: 0 0 16px 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.footer-content p strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.copyright {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 12px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Dark theme adjustments for disclaimers */
+[data-theme="dark"] .disclaimer-banner {
+    background: linear-gradient(135deg, #2d3748, #4a5568);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .disclaimer-content h3 {
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .disclaimer-content p {
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .disclaimer-footer {
+    background: var(--surface-color);
+}
