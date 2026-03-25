@@ -61,6 +61,15 @@ function calculateRemainingTerm() {
         return null;
     }
     
+    // Compact term formatter: "25y 6m" instead of "25 years, 6 months"
+    function formatTermCompact(totalMonths) {
+        const y = Math.floor(totalMonths / 12);
+        const m = totalMonths % 12;
+        if (y > 0 && m > 0) return `${y}y ${m}m`;
+        if (y > 0) return `${y}y`;
+        return `${m}m`;
+    }
+    
     const startDate = new Date(loanStartDate + '-01'); // Add day to make it a full date
     const currentDate = new Date();
     
@@ -82,18 +91,7 @@ function calculateRemainingTerm() {
     window.exactRemainingMonths = remainingMonths;
     
     // Format the display for standard remaining term
-    const years = Math.floor(remainingYears);
-    const months = Math.round((remainingYears - years) * 12);
-    
-    let standardDisplayText = '';
-    if (years > 0) {
-        standardDisplayText += `${years} year${years !== 1 ? 's' : ''}`;
-        if (months > 0) {
-            standardDisplayText += `, ${months} month${months !== 1 ? 's' : ''}`;
-        }
-    } else {
-        standardDisplayText = `${months} month${months !== 1 ? 's' : ''}`;
-    }
+    const standardDisplayText = formatTermCompact(remainingMonths);
     
     // Calculate standard maturity date
     const standardMaturityDate = formatPayoffDate(remainingMonths);
@@ -116,18 +114,7 @@ function calculateRemainingTerm() {
             window.actualRemainingMonths = actualPayoff.monthsToPayoff;
             
             // Format actual remaining term
-            const actualYears = Math.floor(actualPayoff.monthsToPayoff / 12);
-            const actualRemainingMonths = actualPayoff.monthsToPayoff % 12;
-            
-            let actualDisplayText = '';
-            if (actualYears > 0) {
-                actualDisplayText += `${actualYears} year${actualYears !== 1 ? 's' : ''}`;
-                if (actualRemainingMonths > 0) {
-                    actualDisplayText += `, ${actualRemainingMonths} month${actualRemainingMonths !== 1 ? 's' : ''}`;
-                }
-            } else {
-                actualDisplayText = `${actualRemainingMonths} month${actualRemainingMonths !== 1 ? 's' : ''}`;
-            }
+            const actualDisplayText = formatTermCompact(actualPayoff.monthsToPayoff);
             
             // Calculate actual maturity date
             const actualMaturityDate = formatPayoffDate(actualPayoff.monthsToPayoff);
@@ -162,31 +149,16 @@ function updateCalculatedFieldsWithPreviousPayments(standardPayoff) {
     const originalStandardMonths = standardPayoff.monthsToOriginalMaturity;
     const actualCurrentMonths = standardPayoff.monthsToPayoff;
     
-    // Format original standard remaining term
-    const originalYears = Math.floor(originalStandardMonths / 12);
-    const originalMonths = originalStandardMonths % 12;
-    let originalDisplayText = '';
-    if (originalYears > 0) {
-        originalDisplayText += `${originalYears} year${originalYears !== 1 ? 's' : ''}`;
-        if (originalMonths > 0) {
-            originalDisplayText += `, ${originalMonths} month${originalMonths !== 1 ? 's' : ''}`;
-        }
-    } else {
-        originalDisplayText = `${originalMonths} month${originalMonths !== 1 ? 's' : ''}`;
+    // Format terms compactly
+    function formatTermCompact(totalMonths) {
+        const y = Math.floor(totalMonths / 12);
+        const m = totalMonths % 12;
+        if (y > 0 && m > 0) return `${y}y ${m}m`;
+        if (y > 0) return `${y}y`;
+        return `${m}m`;
     }
-    
-    // Format actual current remaining term
-    const actualYears = Math.floor(actualCurrentMonths / 12);
-    const actualMonths = actualCurrentMonths % 12;
-    let actualDisplayText = '';
-    if (actualYears > 0) {
-        actualDisplayText += `${actualYears} year${actualYears !== 1 ? 's' : ''}`;
-        if (actualMonths > 0) {
-            actualDisplayText += `, ${actualMonths} month${actualMonths !== 1 ? 's' : ''}`;
-        }
-    } else {
-        actualDisplayText = `${actualMonths} month${actualMonths !== 1 ? 's' : ''}`;
-    }
+    const originalDisplayText = formatTermCompact(originalStandardMonths);
+    const actualDisplayText = formatTermCompact(actualCurrentMonths);
     
     // Calculate maturity dates
     const currentDate = new Date();
@@ -258,9 +230,10 @@ document.addEventListener('DOMContentLoaded', function() {
         calculatePMI();
     }
     
-    // Add PMI calculation listeners
-    if (homeValueField && originalBalanceField) {
-        homeValueField.addEventListener('input', calculatePMI);
+    // Add PMI calculation listeners — triggers on original balance or remaining balance changes
+    const remainingBalanceField = document.getElementById('remainingBalance');
+    if (originalBalanceField) {
+        if (remainingBalanceField) remainingBalanceField.addEventListener('input', calculatePMI);
     }
     
     // Mark PMI as manually entered when user types in it
@@ -268,6 +241,8 @@ document.addEventListener('DOMContentLoaded', function() {
         pmiField.addEventListener('input', function() {
             if (this.value !== '') {
                 this.dataset.calculated = 'false';
+                const pmiNote = document.getElementById('pmiNote');
+                if (pmiNote) pmiNote.style.display = 'none';
             }
         });
     }
@@ -771,28 +746,43 @@ function formatPayoffDate(monthsFromNow) {
 
 function calculatePMI() {
     const originalBalance = parseMoney(document.getElementById('originalBalance').value);
-    const homeValue = parseMoney(document.getElementById('homeValue').value);
+    const remainingBalance = parseMoney(document.getElementById('remainingBalance').value);
     const pmiField = document.getElementById('pmiPayment');
+    const pmiNote = document.getElementById('pmiNote');
     
-    if (isNaN(originalBalance) || isNaN(homeValue) || originalBalance <= 0 || homeValue <= 0) {
+    if (isNaN(originalBalance) || isNaN(remainingBalance) || originalBalance <= 0 || remainingBalance <= 0) {
         pmiField.value = '';
+        if (pmiNote) pmiNote.style.display = 'none';
         return;
     }
     
-    // Calculate current LTV
-    const currentLTV = (originalBalance / homeValue) * 100;
+    // Lender PMI cutoff: remaining balance / original loan amount
+    const loanRatio = (remainingBalance / originalBalance) * 100;
     
-    // Only calculate PMI if LTV > 80% and field is empty (not manually entered)
-    if (currentLTV > 80 && (pmiField.value === '' || pmiField.dataset.calculated === 'true')) {
-        // Use 0.5% annual rate as default
+    // Only auto-calculate if field hasn't been manually entered
+    if (pmiField.dataset.calculated === 'false') {
+        if (pmiNote) pmiNote.style.display = 'none';
+        return;
+    }
+    
+    if (loanRatio > 80) {
+        // PMI required — estimate at 0.5% annually of original loan
         const annualPMI = originalBalance * 0.005;
         const monthlyPMI = annualPMI / 12;
         pmiField.value = formatMoneyDisplay(Math.round(monthlyPMI));
         pmiField.dataset.calculated = 'true';
-    } else if (currentLTV <= 80) {
-        // No PMI needed if LTV is 80% or below
+        if (pmiNote) {
+            pmiNote.style.display = 'none';
+        }
+    } else {
+        // Balance/original ≤ 80% — PMI should be eliminated
         pmiField.value = '$0';
         pmiField.dataset.calculated = 'true';
+        if (pmiNote) {
+            const pct = loanRatio.toFixed(1);
+            pmiNote.textContent = `PMI set to $0 — balance is ${pct}% of original loan (≤ 80% threshold). Override by typing your actual PMI.`;
+            pmiNote.style.display = 'block';
+        }
     }
 }
 
@@ -1613,9 +1603,6 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
         }));
     }
     
-    // Calculate interest savings accumulation during payoff period
-    const interestSavedTotal = getHistoricalAdjustedInterestSavings(standardPayoff, acceleratedPayoff);
-    
     // Calculate investment amounts for hybrid strategy
     const totalMonthlyPayment = currentPayment + extraPrincipal;
     const totalMonthlyInvestment = totalMonthlyPayment + monthlyPMI; // Invest what was the full payment
@@ -1631,19 +1618,21 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
     
     for (let month = 1; month <= timelineMonths; month++) {
         // Hybrid strategy logic
+        // Interest savings accumulate as: standard interest at month M minus accelerated interest at month M
+        // After payoff, accelerated interest is fixed (loan is done), but standard keeps accruing
+        const standardInterestSoFar = month <= standardPayoff.schedule.length ?
+            standardPayoff.schedule[month - 1].totalInterest : standardPayoff.totalInterest;
+        const acceleratedInterestSoFar = month <= acceleratedPayoff.schedule.length ?
+            acceleratedPayoff.schedule[month - 1].totalInterest : acceleratedPayoff.totalInterest;
+        const interestSavedSoFar = standardInterestSoFar - acceleratedInterestSoFar;
+
         if (month <= payoffMonth) {
-            // Calculate actual non-linear interest savings from schedule data
-            const standardInterestSoFar = month <= standardPayoff.schedule.length ?
-                standardPayoff.schedule[month - 1].totalInterest : standardPayoff.totalInterest;
-            const acceleratedInterestSoFar = month <= acceleratedPayoff.schedule.length ?
-                acceleratedPayoff.schedule[month - 1].totalInterest : acceleratedPayoff.totalInterest;
-            const actualInterestSavings = standardInterestSoFar - acceleratedInterestSoFar;
-            
-            hybridWeakLine.push(actualInterestSavings);
-            hybridAverageLine.push(actualInterestSavings);
-            hybridStrongLine.push(actualInterestSavings);
+            hybridWeakLine.push(interestSavedSoFar);
+            hybridAverageLine.push(interestSavedSoFar);
+            hybridStrongLine.push(interestSavedSoFar);
         } else {
-            // After payoff: add investment growth to interest savings
+            // After payoff: interest savings continue growing (standard borrower still paying interest)
+            // plus investment growth from freed-up payment
             const investmentPeriod = month - payoffMonth;
             
             // Calculate compound growth for investment portion (include annual bonus)
@@ -1658,10 +1647,10 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
             const averageAfterTax = averageGrowth.totalContributions + (averageGrowth.totalGains * (1 - taxRate/100));
             const strongAfterTax = strongGrowth.totalContributions + (strongGrowth.totalGains * (1 - taxRate/100));
             
-            // Add investment value to the interest savings (smooth transition)
-            hybridWeakLine.push(interestSavedTotal + weakAfterTax);
-            hybridAverageLine.push(interestSavedTotal + averageAfterTax);
-            hybridStrongLine.push(interestSavedTotal + strongAfterTax);
+            // Interest savings grow smoothly + investment portfolio grows
+            hybridWeakLine.push(interestSavedSoFar + weakAfterTax);
+            hybridAverageLine.push(interestSavedSoFar + averageAfterTax);
+            hybridStrongLine.push(interestSavedSoFar + strongAfterTax);
         }
         
         // Pure investment strategy: invest only extra principal for full term
