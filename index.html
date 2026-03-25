@@ -53,17 +53,17 @@
                                 </h3>
                                 <div class="form-row">
                                     <label for="originalBalance">Original Loan Amount ($)</label>
-                                    <input type="number" id="originalBalance" value="341910" step="1000">
+                                    <input type="text" inputmode="decimal" id="originalBalance" value="341910" autocomplete="off">
                                     <small class="field-note">Total amount originally borrowed</small>
                                 </div>
                                 <div class="form-row">
                                     <label for="homeValue">Original Home Value ($)</label>
-                                    <input type="number" id="homeValue" value="390000" step="1000">
+                                    <input type="text" inputmode="decimal" id="homeValue" value="390000" autocomplete="off">
                                     <small class="field-note">Original purchase price or appraised value when loan originated</small>
                                 </div>
                                 <div class="form-row">
                                     <label for="remainingBalance">Remaining Balance ($)</label>
-                                    <input type="number" id="remainingBalance" value="299999.96" step="1000">
+                                    <input type="text" inputmode="decimal" id="remainingBalance" value="299999.96" autocomplete="off">
                                     <small class="field-note">Current principal balance owed</small>
                                 </div>
                                 <div class="form-row">
@@ -98,23 +98,23 @@
                                     <label for="pmiPayment">Monthly PMI ($) 
                                         <span class="help-icon" onclick="showTooltip('pmi-calculation')" title="Click for PMI calculation details">❓</span>
                                     </label>
-                                    <input type="number" id="pmiPayment" step="10">
+                                    <input type="text" inputmode="decimal" id="pmiPayment" autocomplete="off">
                                     <small class="field-note">Calculated at 0.5% annually, or enter your actual PMI amount</small>
                                 </div>
                                 <div class="form-row calculated-field">
-                                    <label for="remainingPayments">Remaining Payments (Standard)</label>
+                                    <label for="remainingPayments">Remaining Payments (Current)</label>
                                     <input type="text" id="remainingPayments" readonly>
-                                    <small class="field-note">Number of standard payments left without extra principal payments</small>
+                                    <small class="field-note">Number of payments left based on current balance without extra principal</small>
                                 </div>
                                 <div class="form-row calculated-field">
                                     <label for="remainingTerm">Remaining Term</label>
                                     <input type="text" id="remainingTerm" readonly>
-                                    <small class="field-note">Time remaining on standard payment schedule (years and months)</small>
+                                    <small class="field-note">Time remaining on current payment schedule (years and months)</small>
                                 </div>
                                 <div class="form-row calculated-field">
-                                    <label for="calculatedPayoffDate">Standard Maturity</label>
+                                    <label for="calculatedPayoffDate">Current Maturity</label>
                                     <input type="text" id="calculatedPayoffDate" readonly>
-                                    <small class="field-note">When the loan would be fully paid off with standard payments</small>
+                                    <small class="field-note">When the loan would be fully paid off at the current pace</small>
                                 </div>
                             </div>
 
@@ -124,12 +124,12 @@
                                 </h3>
                                 <div class="form-row">
                                     <label for="extraPrincipal">Monthly Overpayment ($)</label>
-                                    <input type="number" id="extraPrincipal" value="0" step="50">
+                                    <input type="text" inputmode="decimal" id="extraPrincipal" value="0" autocomplete="off">
                                     <small class="field-note">Additional monthly amount going directly to principal</small>
                                 </div>
                                 <div class="form-row">
                                     <label for="annualBonus">Annual Lump Sum Payment ($)</label>
-                                    <input type="number" id="annualBonus" value="0" step="500">
+                                    <input type="text" inputmode="decimal" id="annualBonus" value="0" autocomplete="off">
                                     <small class="field-note">Yearly lump sum applied to principal (e.g., tax refund, work bonus)</small>
                                 </div>
                             </div>
@@ -156,9 +156,9 @@
                                 <h3>🏠 Mortgage Payoff Strategy 
                                     <span class="help-icon" onclick="showTooltip('payoff-strategy')" title="Click for detailed explanation">❓</span>
                                 </h3>
-                                <p class="strategy-description">Pay loan off early using extra principal payments. Shows total interest saved vs. standard payment schedule.</p>
+                                <p class="strategy-description">Pay loan off early using extra principal payments. Shows total interest saved vs. current payment schedule.</p>
                                 <div class="metric">
-                                    <span class="label">Standard Maturity:</span>
+                                    <span class="label">Current Maturity:</span>
                                     <span class="value" id="standardPayoffSummary">-</span>
                                 </div>
                                 <div class="metric">
@@ -183,7 +183,7 @@
                                 <h3>📈 Hybrid Investment Strategy 
                                     <span class="help-icon" onclick="showTooltip('hybrid-strategy')" title="Click for detailed explanation">❓</span>
                                 </h3>
-                                <p class="strategy-description">Pay loan off early, then invest the total monthly payment amount (P&I + PMI + extra payments) for the remaining standard loan term.</p>
+                                <p class="strategy-description">Pay loan off early, then invest the total monthly payment amount (P&I + PMI + extra payments) for the remaining current loan term.</p>
                                 <div class="investment-scenarios">
                                     <div class="scenario weak">
                                         <span class="scenario-title">🐻 Weak (4%)</span>
@@ -204,7 +204,7 @@
                                 <h3>📊 Pure Investment Strategy 
                                     <span class="help-icon" onclick="showTooltip('pure-investment')" title="Click for detailed explanation">❓</span>
                                 </h3>
-                                <p class="strategy-description">Instead of making extra mortgage payments, invest only the extra principal amount for the full standard loan term period.</p>
+                                <p class="strategy-description">Instead of making extra mortgage payments, invest only the extra principal amount for the full current loan term period.</p>
                                 <div class="investment-scenarios">
                                     <div class="scenario weak">
                                         <span class="scenario-title">🐻 Weak (4%)</span>
@@ -231,7 +231,7 @@
                                     <thead>
                                         <tr>
                                             <th>Metric</th>
-                                            <th class="standard-column">🏠 Standard Payment</th>
+                                            <th class="standard-column">🏠 Current Payment</th>
                                             <th class="extra-column">⚡ With Extra Principal</th>
                                             <th class="savings-column">💰 Savings</th>
                                         </tr>
@@ -432,7 +432,7 @@
             <p><strong>Consult Professionals:</strong> Before making any mortgage, investment, or financial decisions, please consult with qualified professionals including financial advisors, tax professionals, mortgage brokers, and legal counsel who can provide advice tailored to your specific situation.</p>
             <p><strong>No Guarantees:</strong> Market conditions, tax laws, and personal circumstances vary. Past performance does not guarantee future results. Investment returns are not guaranteed and may result in loss of principal.</p>
             <p><strong>Use at Your Own Risk:</strong> We make no warranties about the completeness, reliability, or accuracy of this information. Users assume all responsibility for verifying calculations and consulting professionals before making financial decisions.</p>
-            <p class="copyright">© 2025 | Educational Tool Only | Not Licensed Financial Advice | Calculations Subject to Error</p>
+            <p class="copyright">© 2026 | Educational Tool Only | Not Licensed Financial Advice | Calculations Subject to Error</p>
         </div>
     </footer>
 

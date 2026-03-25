@@ -1,9 +1,46 @@
 // Global variables
 let balanceChart = null;
-let comparisonChart = null;
-let strategyChart = null;
-let pureInvestmentChart = null;
 let combinedStrategyChart = null;
+
+// Currency input formatting helpers
+const CURRENCY_INPUT_IDS = ['originalBalance', 'homeValue', 'remainingBalance', 'pmiPayment', 'extraPrincipal', 'annualBonus'];
+
+function parseMoney(str) {
+    if (typeof str === 'number') return str;
+    return parseFloat(String(str).replace(/[$,\s]/g, '')) || 0;
+}
+
+function formatMoneyDisplay(value) {
+    const num = typeof value === 'string' ? parseMoney(value) : value;
+    if (isNaN(num) || num === 0) return '$0';
+    // Show cents only if they exist
+    const hasDecimals = num % 1 !== 0;
+    return '$' + num.toLocaleString('en-US', {
+        minimumFractionDigits: hasDecimals ? 2 : 0,
+        maximumFractionDigits: 2
+    });
+}
+
+function setupCurrencyInput(input) {
+    // Format the initial value on page load
+    const raw = parseMoney(input.value);
+    if (raw > 0) {
+        input.value = formatMoneyDisplay(raw);
+    }
+    
+    input.addEventListener('focus', function() {
+        // Strip formatting on focus so user can edit the raw number
+        const raw = parseMoney(this.value);
+        this.value = raw > 0 ? raw : '';
+        // Select all text for easy replacement
+        this.select();
+    });
+    
+    input.addEventListener('blur', function() {
+        const raw = parseMoney(this.value);
+        this.value = raw > 0 ? formatMoneyDisplay(raw) : '$0';
+    });
+}
 
 // Initialize theme
 function initializeTheme() {
@@ -62,9 +99,9 @@ function calculateRemainingTerm() {
     const standardMaturityDate = formatPayoffDate(remainingMonths);
     
     // Check if we can detect previous extra payments in real-time
-    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
+    const remainingBalance = parseMoney(document.getElementById('remainingBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
-    const currentPayment = parseFloat(document.getElementById('currentPayment').value);
+    const currentPayment = parseMoney(document.getElementById('currentPayment').value);
     
     // If we have the required data, calculate actual vs standard
     if (!isNaN(remainingBalance) && !isNaN(interestRate) && !isNaN(currentPayment) && 
@@ -166,6 +203,14 @@ function updateCalculatedFieldsWithPreviousPayments(standardPayoff) {
 
 // Add event listeners for auto-calculation
 document.addEventListener('DOMContentLoaded', function() {
+    initializeTheme();
+    
+    // Set up currency formatting on money input fields
+    CURRENCY_INPUT_IDS.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) setupCurrencyInput(input);
+    });
+    
     const loanStartDate = document.getElementById('loanStartDate');
     const originalTerm = document.getElementById('originalTerm');
     const currentPayment = document.getElementById('currentPayment');
@@ -226,6 +271,62 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Add input validation - prevent negative numbers on remaining number inputs
+    const numberInputs = document.querySelectorAll('input[type="number"]');
+    numberInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            if (this.value < 0) {
+                this.value = 0;
+            }
+        });
+    });
+    
+    // Add Enter key support on all interactive inputs
+    const allInputs = document.querySelectorAll('input[type="number"], input[type="text"]:not([readonly]), input[type="month"]');
+    allInputs.forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculate();
+            }
+        });
+    });
+    
+    // Add toggle functionality for payment scenarios
+    const monthlyToggle = document.getElementById('monthlyToggle');
+    const biweeklyToggle = document.getElementById('biweeklyToggle');
+    
+    if (monthlyToggle && biweeklyToggle) {
+        monthlyToggle.addEventListener('click', function() {
+            monthlyToggle.classList.add('active');
+            biweeklyToggle.classList.remove('active');
+            
+            if (window.lastScenariosData) {
+                updatePaymentScenariosTable(
+                    window.lastScenariosData.remainingBalance,
+                    window.lastScenariosData.interestRate,
+                    window.lastScenariosData.remainingTermMonths,
+                    'monthly',
+                    window.lastScenariosData.currentPayment
+                );
+            }
+        });
+        
+        biweeklyToggle.addEventListener('click', function() {
+            biweeklyToggle.classList.add('active');
+            monthlyToggle.classList.remove('active');
+            
+            if (window.lastScenariosData) {
+                updatePaymentScenariosTable(
+                    window.lastScenariosData.remainingBalance,
+                    window.lastScenariosData.interestRate,
+                    window.lastScenariosData.remainingTermMonths,
+                    'biweekly',
+                    window.lastScenariosData.currentPayment
+                );
+            }
+        });
+    }
 });
 
 // Toggle theme
@@ -237,17 +338,14 @@ function toggleTheme() {
     localStorage.setItem('theme', newTheme);
     updateThemeIcon(newTheme);
     
-    // Update charts if they exist - all will now update immediately
+    // Update charts if they exist
     if (balanceChart) updateChartTheme(balanceChart);
-    if (comparisonChart) updateChartTheme(comparisonChart);
-    if (strategyChart) updateChartTheme(strategyChart);
-    if (pureInvestmentChart) updateChartTheme(pureInvestmentChart);
     if (combinedStrategyChart) updateChartTheme(combinedStrategyChart);
 }
 
 function updateThemeIcon(theme) {
     const themeIcon = document.querySelector('.theme-icon');
-    themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+    themeIcon.textContent = theme === 'dark' ? '🌙' : '☀️';
 }
 
 function updateChartTheme(chart) {
@@ -312,11 +410,7 @@ function updateChartTheme(chart) {
 // Mortgage calculation functions
 function calculateMortgagePayoff(principal, rate, term, extraPayment = 0, annualBonus = 0, userMonthlyPayment = null, homeValue = null, monthlyPMI = 0) {
     const monthlyRate = rate / 100 / 12;
-    
-    // Use exact remaining months if available (from date calculation), otherwise convert years to months
-    const numberOfPayments = window.exactRemainingMonths !== undefined ? 
-                             window.exactRemainingMonths : 
-                             Math.round(term * 12);
+    const numberOfPayments = Math.round(term * 12);
     
     // Use user's monthly payment if provided, otherwise calculate standard monthly payment (P&I only)
     const monthlyPayment = userMonthlyPayment !== null ? userMonthlyPayment : 
@@ -359,9 +453,9 @@ function calculateMortgagePayoff(principal, rate, term, extraPayment = 0, annual
             totalPrincipalPayment += monthlyPMI; // Add former PMI payment as extra principal
         }
         
-        // Apply annual bonus at the beginning of each year (month 1, 13, 25, etc. = January)
+        // Apply annual bonus once per year (end of each 12-month cycle)
         let bonusThisMonth = 0;
-        if (annualBonus > 0 && month > 0 && (month) % 12 === 1) {
+        if (annualBonus > 0 && (month + 1) % 12 === 0) {
             bonusThisMonth = Math.min(annualBonus, balance - totalPrincipalPayment);
             if (bonusThisMonth > 0) {
                 totalPrincipalPayment += bonusThisMonth;
@@ -419,7 +513,8 @@ function calculateHistoricalPayments(originalBalance, currentBalance, interestRa
     
     const startDate = new Date(loanStartDate);
     const currentDate = new Date();
-    const monthsElapsed = Math.round((currentDate - startDate) / (1000 * 60 * 60 * 24 * 30.44));
+    const monthsElapsed = (currentDate.getFullYear() - startDate.getFullYear()) * 12 +
+                          (currentDate.getMonth() - startDate.getMonth());
     
     if (monthsElapsed <= 0) {
         return { historicalInterest: 0, historicalTotal: 0, monthsElapsed: 0 };
@@ -465,8 +560,8 @@ function calculateHistoricalPayments(originalBalance, currentBalance, interestRa
 // Helper function to get historical-adjusted totals for display
 function getHistoricalAdjustedTotals(payoffData) {
     const loanStartDate = document.getElementById('loanStartDate').value;
-    const originalBalance = parseFloat(document.getElementById('originalBalance').value);
-    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
+    const originalBalance = parseMoney(document.getElementById('originalBalance').value);
+    const remainingBalance = parseMoney(document.getElementById('remainingBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const originalTerm = parseFloat(document.getElementById('originalTerm').value);
     
@@ -529,9 +624,9 @@ function calculateInvestmentGrowth(monthlyInvestment, annualReturn, months, annu
         balance += monthlyInvestment;
         totalContributions += monthlyInvestment;
         
-        // Apply annual bonus at the beginning of each year (month 12, 24, 36, etc.)
+        // Apply annual bonus once per year (end of each 12-month cycle)
         let bonusThisMonth = 0;
-        if (annualBonus > 0 && month > 0 && (month) % 12 === 1) {
+        if (annualBonus > 0 && month > 0 && month % 12 === 0) {
             bonusThisMonth = annualBonus;
             balance += bonusThisMonth;
             totalContributions += bonusThisMonth;
@@ -580,8 +675,8 @@ function calculateDynamicTaxRate(holdingPeriodMonths, annualIncome = null) {
 
 function getEstimatedIncomeFromMortgage() {
     // Rough estimate based on mortgage payment (general rule: housing should be ~28% of gross income)
-    const currentPayment = parseFloat(document.getElementById('currentPayment').value) || 0;
-    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+    const currentPayment = parseMoney(document.getElementById('currentPayment').value) || 0;
+    const monthlyPMI = parseMoney(document.getElementById('pmiPayment').value) || 0;
     const totalHousingPayment = currentPayment + monthlyPMI + 500; // Add estimated taxes/insurance
     
     // Assume housing is 28% of gross income
@@ -598,7 +693,7 @@ function calculateHybridStrategy(acceleratedPayoff, extraPayment, standardTotalM
     
     // Phase 2: Continue investing for remaining years
     const remainingMonths = standardTotalMonths - acceleratedPayoff.monthsToPayoff;
-    const currentPayment = parseFloat(document.getElementById('currentPayment').value);
+    const currentPayment = parseMoney(document.getElementById('currentPayment').value);
     
     // After payoff, invest the P&I payment + extra principal that was being used
     const totalMonthlyInvestment = currentPayment + extraPayment;
@@ -675,8 +770,8 @@ function formatPayoffDate(monthsFromNow) {
 }
 
 function calculatePMI() {
-    const originalBalance = parseFloat(document.getElementById('originalBalance').value);
-    const homeValue = parseFloat(document.getElementById('homeValue').value);
+    const originalBalance = parseMoney(document.getElementById('originalBalance').value);
+    const homeValue = parseMoney(document.getElementById('homeValue').value);
     const pmiField = document.getElementById('pmiPayment');
     
     if (isNaN(originalBalance) || isNaN(homeValue) || originalBalance <= 0 || homeValue <= 0) {
@@ -692,11 +787,11 @@ function calculatePMI() {
         // Use 0.5% annual rate as default
         const annualPMI = originalBalance * 0.005;
         const monthlyPMI = annualPMI / 12;
-        pmiField.value = monthlyPMI.toFixed(0);
+        pmiField.value = formatMoneyDisplay(Math.round(monthlyPMI));
         pmiField.dataset.calculated = 'true';
     } else if (currentLTV <= 80) {
         // No PMI needed if LTV is 80% or below
-        pmiField.value = '0';
+        pmiField.value = '$0';
         pmiField.dataset.calculated = 'true';
     }
 }
@@ -710,17 +805,17 @@ function calculate(autoRun = false) {
     }
     
     // Get input values
-    const currentPayment = parseFloat(document.getElementById('currentPayment').value);
-    const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value);
-    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
-    const originalBalance = parseFloat(document.getElementById('originalBalance').value);
-    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
+    const currentPayment = parseMoney(document.getElementById('currentPayment').value);
+    const extraPrincipal = parseMoney(document.getElementById('extraPrincipal').value);
+    const annualBonus = parseMoney(document.getElementById('annualBonus').value) || 0;
+    const originalBalance = parseMoney(document.getElementById('originalBalance').value);
+    const remainingBalance = parseMoney(document.getElementById('remainingBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const originalTerm = parseFloat(document.getElementById('originalTerm').value);
     const remainingTerm = calculateRemainingTerm(); // Get calculated remaining term in years
     const loanStartDate = document.getElementById('loanStartDate').value;
-    const homeValue = parseFloat(document.getElementById('homeValue').value) || 0;
-    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+    const homeValue = parseMoney(document.getElementById('homeValue').value) || 0;
+    const monthlyPMI = parseMoney(document.getElementById('pmiPayment').value) || 0;
     const taxRate = 20; // Hardcoded 20% capital gains tax rate
     
     // Validate inputs
@@ -843,8 +938,8 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
     const currentDate = new Date();
     
     // Get loan details for historical calculation
-    const originalBalance = parseFloat(document.getElementById('originalBalance').value);
-    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
+    const originalBalance = parseMoney(document.getElementById('originalBalance').value);
+    const remainingBalance = parseMoney(document.getElementById('remainingBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const originalTerm = parseFloat(document.getElementById('originalTerm').value);
     const loanStartDate = document.getElementById('loanStartDate').value;
@@ -872,7 +967,7 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
     }
     
     const taxRate = 20; // Hardcoded 20% capital gains tax rate
-    const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value);
+    const extraPrincipal = parseMoney(document.getElementById('extraPrincipal').value);
     
     // Calculate maturity dates
     const standardMaturityDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + standard.monthsToPayoff, 1);
@@ -887,7 +982,7 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
         const originalMaturityDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + standard.monthsToOriginalMaturity, 1);
         document.getElementById('standardPayoffSummary').innerHTML = `
             <div style="font-size: 0.9em;">
-                <div><strong>Current Standard:</strong><br>${standardMaturityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</div>
+                <div><strong>Current Pace:</strong><br>${standardMaturityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</div>
                 <div style="margin-top: 6px; padding: 4px 8px; background: var(--surface-color); border-radius: 4px; border-left: 3px solid var(--warning-color);">
                     <div style="font-size: 0.85em; color: var(--warning-color); font-weight: 600;">Original Schedule:</div>
                     <div style="color: var(--text-primary); font-weight: 500;">${originalMaturityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</div>
@@ -982,7 +1077,7 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
 }
 
 function updatePIVerificationCard() {
-    const originalBalance = parseFloat(document.getElementById('originalBalance').value);
+    const originalBalance = parseMoney(document.getElementById('originalBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
     const originalTerm = parseFloat(document.getElementById('originalTerm').value);
     
@@ -1001,7 +1096,7 @@ function updatePIVerificationCard() {
     }
     
     // Update the payment field
-    document.getElementById('currentPayment').value = calculatedPI.toFixed(2);
+    document.getElementById('currentPayment').value = formatMoneyDisplay(calculatedPI);
 }
 
 function updateComparisonTable(standard, accelerated, extraPrincipal, annualBonus = 0) {
@@ -1072,7 +1167,7 @@ function updateComparisonTable(standard, accelerated, extraPrincipal, annualBonu
     if (annualBonus > 0 && accelerated.totalBonusApplied) {
         const bonusInfo = document.createElement('div');
         bonusInfo.className = 'bonus-info';
-        bonusInfo.innerHTML = `<small style="color: #10b981; font-weight: 600;">💰 Total Bonus Applied: ${formatCurrency(accelerated.totalBonusApplied)}</small>`;
+        bonusInfo.innerHTML = `<small style="color: #10b981; font-weight: 600;">Total Bonus Applied: ${formatCurrency(accelerated.totalBonusApplied)}</small>`;
         
         // Add to the table if not already there
         const existingBonusInfo = document.querySelector('.bonus-info');
@@ -1087,7 +1182,7 @@ function updateComparisonTable(standard, accelerated, extraPrincipal, annualBonu
         const previousPaymentsInfo = document.createElement('div');
         previousPaymentsInfo.className = 'previous-payments-info';
         const monthsSavedAlready = standard.monthsToOriginalMaturity - standard.monthsToPayoff;
-        previousPaymentsInfo.innerHTML = `<small style="color: #3b82f6; font-weight: 600;">📈 Previous Extra Payments Detected: Already ${formatTime(monthsSavedAlready)} ahead of original schedule</small>`;
+        previousPaymentsInfo.innerHTML = `<small style="color: #3b82f6; font-weight: 600;"> Previous Extra Payments Detected: Already ${formatTime(monthsSavedAlready)} ahead of original schedule</small>`;
         
         // Add to the table if not already there
         const existingPreviousInfo = document.querySelector('.previous-payments-info');
@@ -1109,95 +1204,242 @@ function createBalanceChart(standard, accelerated) {
     const textColor = isDark ? '#f1f5f9' : '#1e293b';
     const gridColor = isDark ? '#475569' : '#e2e8f0';
     
-    const maxMonths = Math.max(standard.schedule.length, accelerated.schedule.length);
+    // Read loan parameters for full lifecycle view
+    const originalBalance = parseMoney(document.getElementById('originalBalance').value) || 0;
+    const remainingBalance = parseMoney(document.getElementById('remainingBalance').value);
+    const interestRate = parseFloat(document.getElementById('interestRate').value);
+    const originalTerm = parseFloat(document.getElementById('originalTerm').value) || 0;
+    const loanStartDate = document.getElementById('loanStartDate').value;
     
-    // Get initial balance to calculate equity
-    const initialBalance = parseFloat(document.getElementById('remainingBalance').value);
+    // Determine whether we have enough info for historical data
+    const hasHistoricalData = loanStartDate && originalTerm > 0 && originalBalance > 0;
     
-    // Create date labels starting from current date
-    const currentDate = new Date();
-    const dateLabels = [];
-    for (let i = 0; i < maxMonths; i++) {
-        const futureDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + i + 1, 1);
-        dateLabels.push(futureDate.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short'
-        }));
+    let monthsElapsed = 0;
+    let chartStartDate = new Date();
+    
+    if (hasHistoricalData) {
+        chartStartDate = new Date(loanStartDate + '-01');
+        const now = new Date();
+        monthsElapsed = (now.getFullYear() - chartStartDate.getFullYear()) * 12 +
+                        (now.getMonth() - chartStartDate.getMonth());
+        monthsElapsed = Math.max(0, monthsElapsed);
     }
     
-    // Calculate equity data (initial balance - current balance)
-    const standardEquity = standard.schedule.map(item => initialBalance - item.balance);
-    const acceleratedEquity = accelerated.schedule.map(item => initialBalance - item.balance);
+    const initialBalance = hasHistoricalData ? originalBalance : remainingBalance;
+    const totalOriginalMonths = hasHistoricalData ? Math.round(originalTerm * 12) : 0;
+    
+    // Full timeline: original loan term, or at least enough for both schedules
+    const maxMonths = hasHistoricalData
+        ? Math.max(totalOriginalMonths, monthsElapsed + Math.max(standard.schedule.length, accelerated.schedule.length))
+        : Math.max(standard.schedule.length, accelerated.schedule.length);
+    
+    // Date labels from chart start date through full timeline
+    const dateLabels = [];
+    for (let i = 0; i < maxMonths; i++) {
+        const d = new Date(chartStartDate.getFullYear(), chartStartDate.getMonth() + i + 1, 1);
+        dateLabels.push(d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' }));
+    }
+    
+    // Estimate historical interest using average approximation
+    let estimatedHistoricalInterest = 0;
+    if (hasHistoricalData && monthsElapsed > 0) {
+        const monthlyRate = interestRate / 100 / 12;
+        const origPayments = Math.round(originalTerm * 12);
+        if (monthlyRate > 0 && origPayments > 0) {
+            const stdPayment = originalBalance * (monthlyRate * Math.pow(1 + monthlyRate, origPayments)) /
+                              (Math.pow(1 + monthlyRate, origPayments) - 1);
+            const principalPaid = originalBalance - remainingBalance;
+            estimatedHistoricalInterest = Math.max(0, stdPayment * monthsElapsed - principalPaid);
+        }
+    }
+    
+    // Build full arrays: historical (shared) + forward (divergent)
+    const standardBalanceData = [];
+    const acceleratedBalanceData = [];
+    const standardInterestData = [];
+    const acceleratedInterestData = [];
+    
+    // Historical portion — linear interpolation from original to current (same for both)
+    const principalPaidSoFar = originalBalance - remainingBalance;
+    for (let i = 0; i < monthsElapsed && i < maxMonths; i++) {
+        const progress = (i + 1) / monthsElapsed;
+        const histBalance = initialBalance - (principalPaidSoFar * progress);
+        const histInterest = estimatedHistoricalInterest * progress;
+        standardBalanceData.push(histBalance);
+        acceleratedBalanceData.push(histBalance);
+        standardInterestData.push(histInterest);
+        acceleratedInterestData.push(histInterest);
+    }
+    
+    // Forward portion from calculated schedules, offset interest by historical amount
+    const forwardMonths = maxMonths - monthsElapsed;
+    for (let i = 0; i < forwardMonths; i++) {
+        if (i < standard.schedule.length) {
+            standardBalanceData.push(standard.schedule[i].balance);
+            standardInterestData.push(estimatedHistoricalInterest + standard.schedule[i].totalInterest);
+        } else {
+            standardBalanceData.push(0);
+            standardInterestData.push(standardInterestData[standardInterestData.length - 1] || 0);
+        }
+        
+        if (i < accelerated.schedule.length) {
+            acceleratedBalanceData.push(accelerated.schedule[i].balance);
+            acceleratedInterestData.push(estimatedHistoricalInterest + accelerated.schedule[i].totalInterest);
+        } else {
+            acceleratedBalanceData.push(0);
+            acceleratedInterestData.push(acceleratedInterestData[acceleratedInterestData.length - 1] || 0);
+        }
+    }
+    
+    // Calculate equity data (original balance - current balance)
+    const standardEquity = standardBalanceData.map(bal => initialBalance - bal);
+    const acceleratedEquity = acceleratedBalanceData.map(bal => initialBalance - bal);
+    
+    // Build original amortization shadow line (true original schedule from day 1, no extra payments)
+    const originalBalanceData = [];
+    const originalEquityData = [];
+    const originalInterestData = [];
+    let hasOriginalLine = false;
+    if (hasHistoricalData) {
+        const monthlyRate = interestRate / 100 / 12;
+        const origPayments = Math.round(originalTerm * 12);
+        if (monthlyRate > 0 && origPayments > 0) {
+            const origPayment = originalBalance * (monthlyRate * Math.pow(1 + monthlyRate, origPayments)) /
+                               (Math.pow(1 + monthlyRate, origPayments) - 1);
+            let bal = originalBalance;
+            let totalInt = 0;
+            for (let i = 0; i < maxMonths; i++) {
+                if (i < origPayments && bal > 0.01) {
+                    const interest = bal * monthlyRate;
+                    const principal = origPayment - interest;
+                    totalInt += interest;
+                    bal = Math.max(0, bal - principal);
+                    originalBalanceData.push(bal);
+                    originalEquityData.push(originalBalance - bal);
+                    originalInterestData.push(totalInt);
+                } else {
+                    originalBalanceData.push(0);
+                    originalEquityData.push(originalBalance);
+                    originalInterestData.push(totalInt);
+                }
+            }
+            hasOriginalLine = true;
+        }
+    }
     
     balanceChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: dateLabels,
             datasets: [
+                // ── Standard Payment group ──
                 {
-                    label: '🏠 Standard Payment - Balance',
-                    data: standard.schedule.map(item => item.balance),
+                    label: '🏡 Current - Balance',
+                    data: standardBalanceData,
                     borderColor: '#ef4444',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
+                    pointRadius: 0,
                     yAxisID: 'y'
                 },
                 {
-                    label: '⚡ With Extra Principal - Balance',
-                    data: accelerated.schedule.map(item => item.balance),
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.4,
-                    yAxisID: 'y'
-                },
-                {
-                    label: '💰 Standard Payment - Equity Built',
+                    label: '💰 Current - Equity',
                     data: standardEquity,
                     borderColor: '#8b5cf6',
                     backgroundColor: 'rgba(139, 92, 246, 0.1)',
                     borderWidth: 2,
                     fill: false,
                     tension: 0.4,
+                    pointRadius: 0,
                     borderDash: [3, 3],
                     yAxisID: 'y'
                 },
                 {
-                    label: '💎 With Extra Principal - Equity Built',
+                    label: '📊 Current - Interest Paid',
+                    data: standardInterestData,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    yAxisID: 'y1'
+                },
+                // ── Extra Payment group ──
+                {
+                    label: '⚡ Extra - Balance',
+                    data: acceleratedBalanceData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    yAxisID: 'y'
+                },
+                {
+                    label: '💎 Extra - Equity',
                     data: acceleratedEquity,
                     borderColor: '#06b6d4',
                     backgroundColor: 'rgba(6, 182, 212, 0.1)',
                     borderWidth: 2,
                     fill: false,
                     tension: 0.4,
+                    pointRadius: 0,
                     borderDash: [3, 3],
                     yAxisID: 'y'
                 },
                 {
-                    label: '📊 Standard Payment - Interest Paid',
-                    data: standard.schedule.map(item => item.totalInterest),
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.4,
-                    borderDash: [5, 5],
-                    yAxisID: 'y1'
-                },
-                {
-                    label: '📈 With Extra Principal - Interest Paid',
-                    data: accelerated.schedule.map(item => item.totalInterest),
+                    label: '📈 Extra - Interest Paid',
+                    data: acceleratedInterestData,
                     borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     borderWidth: 2,
                     fill: false,
                     tension: 0.4,
+                    pointRadius: 0,
                     borderDash: [5, 5],
                     yAxisID: 'y1'
-                }
+                },
+                // ── Original amortization shadow (only if historical data available) ──
+                ...(hasOriginalLine ? [{
+                    label: '👻 Original Schedule',
+                    data: originalBalanceData,
+                    borderColor: isDark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(100, 116, 139, 0.3)',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    borderDash: [8, 4],
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Original - Equity',
+                    data: originalEquityData,
+                    borderColor: isDark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(100, 116, 139, 0.3)',
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    borderDash: [8, 4],
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Original - Interest',
+                    data: originalInterestData,
+                    borderColor: isDark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(100, 116, 139, 0.3)',
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    borderDash: [8, 4],
+                    yAxisID: 'y1'
+                }] : [])
             ]
         },
         options: {
@@ -1224,7 +1466,14 @@ function createBalanceChart(standard, accelerated) {
                     borderWidth: 1,
                     callbacks: {
                         label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                            return ' ' + context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                        },
+                        afterLabel: function(context) {
+                            // Separator between Current group (0-2), Extra group (3-5), and Original (6)
+                            if (context.datasetIndex === 2 || (context.datasetIndex === 5 && hasOriginalLine)) {
+                                return '  ─────────────────';
+                            }
+                            return '';
                         }
                     }
                 }
@@ -1240,7 +1489,6 @@ function createBalanceChart(standard, accelerated) {
                         color: textColor,
                         maxTicksLimit: 12,
                         callback: function(value, index) {
-                            // Show every other tick to avoid crowding
                             return index % Math.ceil(dateLabels.length / 12) === 0 ? this.getLabelForValue(value) : '';
                         }
                     },
@@ -1254,7 +1502,7 @@ function createBalanceChart(standard, accelerated) {
                     position: 'left',
                     title: {
                         display: true,
-                        text: 'Remaining Balance ($)',
+                        text: 'Balance & Equity ($)',
                         color: textColor
                     },
                     ticks: {
@@ -1287,536 +1535,38 @@ function createBalanceChart(standard, accelerated) {
                     }
                 }
             }
-        }
-    });
-}
-
-function createStrategyChart(payoff, weak, average, strong) {
-    const ctx = document.getElementById('strategyChart').getContext('2d');
-    
-    if (strategyChart) {
-        strategyChart.destroy();
-    }
-    
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#f1f5f9' : '#1e293b';
-    const gridColor = isDark ? '#475569' : '#e2e8f0';
-    
-    const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value);
-    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
-    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
-    const interestRate = parseFloat(document.getElementById('interestRate').value);
-    const remainingTerm = parseFloat(document.getElementById('remainingTerm').value);
-    
-    // Calculate P&I portion for fair comparison
-    const monthlyRate = interestRate / 100 / 12;
-    const numberOfPayments = remainingTerm * 12;
-    const monthlyPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
-                     (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-    
-    // For fair comparison: invest only the extra principal amount vs paying extra on mortgage
-    const monthlyInvestmentAmount = extraPrincipal;
-    
-    // Calculate standard mortgage for comparison
-    const standardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0);
-    
-    // Use the accelerated payoff timeline for comparison
-    const timelineMonths = payoff.monthsToPayoff;
-    
-    // Create date labels starting from current date
-    const currentDate = new Date();
-    const dateLabels = [];
-    for (let i = 0; i < timelineMonths; i++) {
-        const futureDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + i + 1, 1);
-        dateLabels.push(futureDate.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short'
-        }));
-    }
-    
-    // Calculate net benefit over time up to accelerated maturity
-    const weakNetBenefit = [];
-    const averageNetBenefit = [];
-    const strongNetBenefit = [];
-    const mortgageNetBenefit = [];
-    
-    for (let month = 1; month <= timelineMonths; month++) {
-        // Calculate the TOTAL interest savings using historical-adjusted totals
-        const totalInterestSaved = getHistoricalAdjustedInterestSavings(standardPayoff, payoff);
-        
-        // Show this total savings growing linearly over the payoff period
-        const progressRatio = month / timelineMonths;
-        const interestSavedSoFar = totalInterestSaved * progressRatio;
-        
-        // Investment values: investing only the extra principal amount each month (total value, not just gains)
-        const weakInvestTotal = calculateInvestmentGrowth(monthlyInvestmentAmount, 4, month, annualBonus).finalBalance;
-        const avgInvestTotal = calculateInvestmentGrowth(monthlyInvestmentAmount, 7, month, annualBonus).finalBalance;
-        const strongInvestTotal = calculateInvestmentGrowth(monthlyInvestmentAmount, 10, month, annualBonus).finalBalance;
-        
-        weakNetBenefit.push(weakInvestTotal);
-        averageNetBenefit.push(avgInvestTotal);
-        strongNetBenefit.push(strongInvestTotal);
-        mortgageNetBenefit.push(interestSavedSoFar);
-    }
-    
-    strategyChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: dateLabels,
-            datasets: [
-                {
-                    label: '🏠 Mortgage Payoff Interest Savings',
-                    data: mortgageNetBenefit,
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                },
-                {
-                    label: '🐻 Invest Extra Principal (Weak 4%)',
-                    data: weakNetBenefit,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                },
-                {
-                    label: '📈 Invest Extra Principal (Average 7%)',
-                    data: averageNetBenefit,
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                },
-                {
-                    label: '🚀 Invest Extra Principal (Strong 10%)',
-                    data: strongNetBenefit,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                }
-            ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: textColor,
-                        usePointStyle: true,
-                        padding: 15
-                    }
-                },
-                tooltip: {
-                    backgroundColor: isDark ? '#334155' : '#ffffff',
-                    titleColor: textColor,
-                    bodyColor: textColor,
-                    borderColor: gridColor,
-                    borderWidth: 1,
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Date',
-                        color: textColor
-                    },
-                    ticks: {
-                        color: textColor,
-                        maxTicksLimit: 12,
-                        callback: function(value, index) {
-                            return index % Math.ceil(dateLabels.length / 12) === 0 ? this.getLabelForValue(value) : '';
-                        }
-                    },
-                    grid: {
-                        color: gridColor
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Financial Benefit ($)',
-                        color: textColor
-                    },
-                    ticks: {
-                        color: textColor,
-                        callback: function(value) {
-                            return formatCurrency(value);
-                        }
-                    },
-                    grid: {
-                        color: gridColor
-                    }
+        plugins: [{
+            beforeDraw: function(chart) {
+                if (monthsElapsed > 0 && hasHistoricalData) {
+                    const ctx2 = chart.ctx;
+                    const chartArea = chart.chartArea;
+                    const xScale = chart.scales.x;
+                    const todayX = xScale.getPixelForValue(monthsElapsed - 1);
+                    
+                    // Shade the historical area
+                    ctx2.save();
+                    ctx2.fillStyle = isDark ? 'rgba(148, 163, 184, 0.08)' : 'rgba(148, 163, 184, 0.06)';
+                    ctx2.fillRect(chartArea.left, chartArea.top, todayX - chartArea.left, chartArea.bottom - chartArea.top);
+                    
+                    // Draw "Today" vertical line
+                    ctx2.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.3)';
+                    ctx2.lineWidth = 2;
+                    ctx2.setLineDash([4, 4]);
+                    ctx2.beginPath();
+                    ctx2.moveTo(todayX, chartArea.top);
+                    ctx2.lineTo(todayX, chartArea.bottom);
+                    ctx2.stroke();
+                    
+                    // "Today" label
+                    ctx2.fillStyle = textColor;
+                    ctx2.font = 'bold 11px sans-serif';
+                    ctx2.textAlign = 'center';
+                    ctx2.fillText('Today', todayX, chartArea.top - 5);
+                    ctx2.restore();
                 }
             }
-        }
-    });
-}
-
-function createComparisonChart(payoff, weak, average, strong) {
-    const ctx = document.getElementById('comparisonChart').getContext('2d');
-    
-    if (comparisonChart) {
-        comparisonChart.destroy();
-    }
-    
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#f1f5f9' : '#1e293b';
-    const gridColor = isDark ? '#475569' : '#e2e8f0';
-    
-    const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value);
-    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
-    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
-    const interestRate = parseFloat(document.getElementById('interestRate').value);
-    const remainingTerm = parseFloat(document.getElementById('remainingTerm').value);
-    const currentPayment = parseFloat(document.getElementById('currentPayment').value);
-    
-    // Calculate standard mortgage for comparison
-    const standardPayoff = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0);
-    
-    // Use only the investment timeline (from maturity to end of standard term)
-    const investmentTimelineMonths = standardPayoff.monthsToPayoff - payoff.monthsToPayoff;
-    
-    // Calculate P&I portion for investment phase
-    const monthlyRate = interestRate / 100 / 12;
-    const numberOfPayments = remainingTerm * 12;
-    const monthlyPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, numberOfPayments)) / 
-                     (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-    
-    // Calculate total monthly investment amount (75% of total payment + extra principal)
-    const estimatedPI = currentPayment * 0.75;
-    const totalMonthlyInvestment = estimatedPI + extraPrincipal;
-    
-    // Update the chart title with investment details
-    const chartTitle = document.querySelector('#comparisonChart').closest('.chart-container').querySelector('h3');
-    chartTitle.innerHTML = `💰 Hybrid Strategy: Investment After Payoff`;
-    
-    const chartSubtitle = document.querySelector('#comparisonChart').closest('.chart-container').querySelector('.chart-subtitle');
-    chartSubtitle.innerHTML = `Monthly Investment: ${formatCurrency(totalMonthlyInvestment)} (75% of Payment: ${formatCurrency(estimatedPI)} + Extra Principal: ${formatCurrency(extraPrincipal)})`;
-    
-    // Create date labels starting from payoff completion date
-    const currentDate = new Date();
-    const maturityDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + payoff.monthsToPayoff, 1);
-    const dateLabels = [];
-    for (let i = 0; i < investmentTimelineMonths; i++) {
-        const futureDate = new Date(maturityDate.getFullYear(), maturityDate.getMonth() + i + 1, 1);
-        dateLabels.push(futureDate.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short'
-        }));
-    }
-    
-    // Investment growth data arrays (showing only investment gains, not interest savings)
-    const hybridWeakLine = [];
-    const hybridAverageLine = [];
-    const hybridStrongLine = [];
-    
-    for (let month = 1; month <= investmentTimelineMonths; month++) {
-        // After maturity, invest the freed cash flow (P&I + extra principal only)
-        // Note: totalMonthlyInvestment is already calculated above
-        
-        // Calculate investment growth starting from zero
-        const weakGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 4, month);
-        const avgGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 7, month);
-        const strongGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 10, month);
-        
-        // Show total investment value (principal invested + gains)
-        hybridWeakLine.push(weakGrowth.totalValue);
-        hybridAverageLine.push(avgGrowth.totalValue);
-        hybridStrongLine.push(strongGrowth.totalValue);
-    }
-    
-    comparisonChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: dateLabels,
-            datasets: [
-                {
-                    label: '🐻 Total Investment Value (Weak 4%)',
-                    data: hybridWeakLine,
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0.1
-                },
-                {
-                    label: '📈 Total Investment Value (Average 7%)',
-                    data: hybridAverageLine,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0.1
-                },
-                {
-                    label: '🚀 Total Investment Value (Strong 10%)',
-                    data: hybridStrongLine,
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0.1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: textColor,
-                        usePointStyle: true,
-                        padding: 15
-                    }
-                },
-                tooltip: {
-                    backgroundColor: isDark ? '#334155' : '#ffffff',
-                    titleColor: textColor,
-                    bodyColor: textColor,
-                    borderColor: gridColor,
-                    borderWidth: 1,
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Date',
-                        color: textColor
-                    },
-                    ticks: {
-                        color: textColor,
-                        maxTicksLimit: 12,
-                        callback: function(value, index) {
-                            // Show every other tick to avoid crowding
-                            return index % Math.ceil(dateLabels.length / 12) === 0 ? this.getLabelForValue(value) : '';
-                        }
-                    },
-                    grid: {
-                        color: gridColor
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Investment Gains ($)',
-                        color: textColor
-                    },
-                    ticks: {
-                        color: textColor,
-                        callback: function(value) {
-                            return formatCurrency(value);
-                        }
-                    },
-                    grid: {
-                        color: gridColor
-                    }
-                }
-            }
-        }
-    });
-}
-
-function createPureInvestmentChart(standardPayoff, weak, average, strong) {
-    const ctx = document.getElementById('pureInvestmentChart').getContext('2d');
-    
-    if (pureInvestmentChart) {
-        pureInvestmentChart.destroy();
-    }
-    
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const textColor = isDark ? '#f1f5f9' : '#1e293b';
-    const gridColor = isDark ? '#475569' : '#e2e8f0';
-    
-    const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
-    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
-    
-    // Use the full original loan term for pure investment timeline
-    const timelineMonths = standardPayoff.monthsToPayoff;
-    
-    // Create date labels starting from current date
-    const currentDate = new Date();
-    const dateLabels = [];
-    for (let i = 0; i < timelineMonths; i++) {
-        const futureDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + i + 1, 1);
-        dateLabels.push(futureDate.toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short'
-        }));
-    }
-    
-    // Calculate investment growth over full term
-    const weakInvestmentLine = [];
-    const averageInvestmentLine = [];
-    const strongInvestmentLine = [];
-    const totalContributionsLine = [];
-    
-    for (let month = 1; month <= timelineMonths; month++) {
-        // Calculate investment growth: investing extra principal + annual bonus
-        const weakGrowth = calculateInvestmentGrowth(extraPrincipal, 4, month, annualBonus);
-        const avgGrowth = calculateInvestmentGrowth(extraPrincipal, 7, month, annualBonus);
-        const strongGrowth = calculateInvestmentGrowth(extraPrincipal, 10, month, annualBonus);
-        
-        weakInvestmentLine.push(weakGrowth.totalValue);
-        averageInvestmentLine.push(avgGrowth.totalValue);
-        strongInvestmentLine.push(strongGrowth.totalValue);
-        totalContributionsLine.push(weakGrowth.totalContributions); // Same for all scenarios
-    }
-    
-    pureInvestmentChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: dateLabels,
-            datasets: [
-                {
-                    label: '💵 Total Contributions',
-                    data: totalContributionsLine,
-                    borderColor: '#6b7280',
-                    backgroundColor: 'rgba(107, 114, 128, 0.1)',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0,
-                    borderDash: [5, 5],
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                },
-                {
-                    label: '🐻 Total Value (Weak 4%)',
-                    data: weakInvestmentLine,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                },
-                {
-                    label: '📈 Total Value (Average 7%)',
-                    data: averageInvestmentLine,
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                },
-                {
-                    label: '🚀 Total Value (Strong 10%)',
-                    data: strongInvestmentLine,
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHoverRadius: 4
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        color: textColor,
-                        usePointStyle: true,
-                        padding: 15
-                    }
-                },
-                tooltip: {
-                    backgroundColor: isDark ? '#334155' : '#ffffff',
-                    titleColor: textColor,
-                    bodyColor: textColor,
-                    borderColor: gridColor,
-                    borderWidth: 1,
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' + formatCurrency(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Date',
-                        color: textColor
-                    },
-                    ticks: {
-                        color: textColor,
-                        maxTicksLimit: 12,
-                        callback: function(value, index) {
-                            return index % Math.ceil(dateLabels.length / 12) === 0 ? this.getLabelForValue(value) : '';
-                        }
-                    },
-                    grid: {
-                        color: gridColor
-                    }
-                },
-                y: {
-                    title: {
-                        display: true,
-                        text: 'Investment Value ($)',
-                        color: textColor
-                    },
-                    ticks: {
-                        color: textColor,
-                        callback: function(value) {
-                            return formatCurrency(value);
-                        }
-                    },
-                    grid: {
-                        color: gridColor
-                    }
-                }
-            }
-        }
+        }]
     });
 }
 
@@ -1841,12 +1591,12 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
         gridColor = '#e2e8f0';  // Light gray for light theme
     }
     
-    const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
-    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
-    const remainingBalance = parseFloat(document.getElementById('remainingBalance').value);
+    const extraPrincipal = parseMoney(document.getElementById('extraPrincipal').value) || 0;
+    const annualBonus = parseMoney(document.getElementById('annualBonus').value) || 0;
+    const remainingBalance = parseMoney(document.getElementById('remainingBalance').value);
     const interestRate = parseFloat(document.getElementById('interestRate').value);
-    const currentPayment = parseFloat(document.getElementById('currentPayment').value);
-    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+    const currentPayment = parseMoney(document.getElementById('currentPayment').value);
+    const monthlyPMI = parseMoney(document.getElementById('pmiPayment').value) || 0;
     
     // Use the full original loan term timeline
     const timelineMonths = standardPayoff.monthsToPayoff;
@@ -1879,30 +1629,27 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
     const pureAverageLine = [];
     const pureStrongLine = [];
     
-    // Use existing mortgage calculation functions to get progressive interest savings
-    // Calculate both scenarios with their payment schedules
-    const standardSchedule = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, 0, 0, currentPayment, homeValue, 0);
-    const acceleratedSchedule = calculateMortgagePayoff(remainingBalance, interestRate, remainingTerm, extraPrincipal, annualBonus, currentPayment, homeValue, monthlyPMI);
-    
     for (let month = 1; month <= timelineMonths; month++) {
         // Hybrid strategy logic
         if (month <= payoffMonth) {
-            // Show progressive growth to the total interest saved amount
-            const progressRatio = month / payoffMonth;
-            const currentInterestSavings = interestSavedTotal * progressRatio;
+            // Calculate actual non-linear interest savings from schedule data
+            const standardInterestSoFar = month <= standardPayoff.schedule.length ?
+                standardPayoff.schedule[month - 1].totalInterest : standardPayoff.totalInterest;
+            const acceleratedInterestSoFar = month <= acceleratedPayoff.schedule.length ?
+                acceleratedPayoff.schedule[month - 1].totalInterest : acceleratedPayoff.totalInterest;
+            const actualInterestSavings = standardInterestSoFar - acceleratedInterestSoFar;
             
-            hybridWeakLine.push(currentInterestSavings);
-            hybridAverageLine.push(currentInterestSavings);
-            hybridStrongLine.push(currentInterestSavings);
+            hybridWeakLine.push(actualInterestSavings);
+            hybridAverageLine.push(actualInterestSavings);
+            hybridStrongLine.push(actualInterestSavings);
         } else {
             // After payoff: add investment growth to interest savings
             const investmentPeriod = month - payoffMonth;
             
-            // Calculate compound growth for investment portion using correct function signature
-            // This shows the progressive growth from month 1 of investing
-            const weakGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 4, investmentPeriod, 0);
-            const averageGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 7, investmentPeriod, 0);
-            const strongGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 10, investmentPeriod, 0);
+            // Calculate compound growth for investment portion (include annual bonus)
+            const weakGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 4, investmentPeriod, annualBonus);
+            const averageGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 7, investmentPeriod, annualBonus);
+            const strongGrowth = calculateInvestmentGrowth(totalMonthlyInvestment, 10, investmentPeriod, annualBonus);
             
             // Apply dynamic capital gains tax based on holding period
             const estimatedIncome = getEstimatedIncomeFromMortgage();
@@ -2051,7 +1798,14 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
                     callbacks: {
                         label: function(context) {
                             const value = context.parsed.y;
-                            return context.dataset.label + ': $' + value.toLocaleString(undefined, {maximumFractionDigits: 0});
+                            return ' ' + context.dataset.label + ': $' + value.toLocaleString(undefined, {maximumFractionDigits: 0});
+                        },
+                        afterLabel: function(context) {
+                            // Separator between Hybrid group and Pure Investment group
+                            if (context.datasetIndex === 2 && context.chart.data.datasets.length > 3) {
+                                return '  ─────────────────';
+                            }
+                            return '';
                         },
                         afterBody: function(tooltipItems) {
                             const monthIndex = tooltipItems[0].dataIndex + 1;
@@ -2112,61 +1866,61 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
                         color: gridColor
                     }
                 }
-            },
-            // Add a vertical line at payoff date
-            plugins: [{
-                beforeDraw: function(chart) {
-                    if (payoffMonth < timelineMonths) {
-                        const ctx = chart.ctx;
-                        const chartArea = chart.chartArea;
-                        const xScale = chart.scales.x;
-                        
-                        const payoffX = xScale.getPixelForValue(payoffMonth - 1);
-                        
-                        // Add shaded area for payoff phase
-                        ctx.save();
-                        ctx.fillStyle = isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)';
-                        ctx.fillRect(chartArea.left, chartArea.top, payoffX - chartArea.left, chartArea.bottom - chartArea.top);
-                        
-                        // Add shaded area for investment phase
-                        ctx.fillStyle = isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)';
-                        ctx.fillRect(payoffX, chartArea.top, chartArea.right - payoffX, chartArea.bottom - chartArea.top);
-                        
-                        // Add vertical divider line
-                        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)';
-                        ctx.lineWidth = 3;
-                        ctx.setLineDash([]);
-                        ctx.beginPath();
-                        ctx.moveTo(payoffX, chartArea.top);
-                        ctx.lineTo(payoffX, chartArea.bottom);
-                        ctx.stroke();
-                        
-                        ctx.restore();
-                        
-                        // Add phase labels
-                        ctx.save();
-                        ctx.fillStyle = textColor;
-                        ctx.font = 'bold 14px Arial';
-                        ctx.textAlign = 'center';
-                        
-                        // Payoff phase label
-                        const payoffPhaseX = chartArea.left + (payoffX - chartArea.left) / 2;
-                        ctx.fillText('🏠 PAYOFF PHASE', payoffPhaseX, chartArea.top - 15);
-                        ctx.font = '12px Arial';
-                        ctx.fillText('Interest Savings', payoffPhaseX, chartArea.top - 2);
-                        
-                        // Investment phase label
-                        const investmentPhaseX = payoffX + (chartArea.right - payoffX) / 2;
-                        ctx.font = 'bold 14px Arial';
-                        ctx.fillText('📈 INVESTMENT PHASE', investmentPhaseX, chartArea.top - 15);
-                        ctx.font = '12px Arial';
-                        ctx.fillText('Compound Growth', investmentPhaseX, chartArea.top - 2);
-                        
-                        ctx.restore();
-                    }
+            }
+        },
+        // Vertical line at payoff date with phase shading
+        plugins: [{
+            beforeDraw: function(chart) {
+                if (payoffMonth < timelineMonths) {
+                    const ctx = chart.ctx;
+                    const chartArea = chart.chartArea;
+                    const xScale = chart.scales.x;
+                    
+                    const payoffX = xScale.getPixelForValue(payoffMonth - 1);
+                    
+                    // Add shaded area for payoff phase
+                    ctx.save();
+                    ctx.fillStyle = isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.05)';
+                    ctx.fillRect(chartArea.left, chartArea.top, payoffX - chartArea.left, chartArea.bottom - chartArea.top);
+                    
+                    // Add shaded area for investment phase
+                    ctx.fillStyle = isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)';
+                    ctx.fillRect(payoffX, chartArea.top, chartArea.right - payoffX, chartArea.bottom - chartArea.top);
+                    
+                    // Add vertical divider line
+                    ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([]);
+                    ctx.beginPath();
+                    ctx.moveTo(payoffX, chartArea.top);
+                    ctx.lineTo(payoffX, chartArea.bottom);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                    
+                    // Add phase labels
+                    ctx.save();
+                    ctx.fillStyle = textColor;
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    
+                    // Payoff phase label
+                    const payoffPhaseX = chartArea.left + (payoffX - chartArea.left) / 2;
+                    ctx.fillText('🏠 PAYOFF PHASE', payoffPhaseX, chartArea.top - 15);
+                    ctx.font = '12px Arial';
+                    ctx.fillText('Interest Savings', payoffPhaseX, chartArea.top - 2);
+                    
+                    // Investment phase label
+                    const investmentPhaseX = payoffX + (chartArea.right - payoffX) / 2;
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillText('📈 INVESTMENT PHASE', investmentPhaseX, chartArea.top - 15);
+                    ctx.font = '12px Arial';
+                    ctx.fillText('Compound Growth', investmentPhaseX, chartArea.top - 2);
+                    
+                    ctx.restore();
                 }
-            }]
-        }
+            }
+        }]
     });
 }
 
@@ -2177,10 +1931,10 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
     scenariosBody.innerHTML = '';
     
     // Get current values (including PMI and annual bonus to match main calculations)
-    const currentExtraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
-    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
-    const homeValue = parseFloat(document.getElementById('homeValue').value) || 0;
-    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+    const currentExtraPrincipal = parseMoney(document.getElementById('extraPrincipal').value) || 0;
+    const annualBonus = parseMoney(document.getElementById('annualBonus').value) || 0;
+    const homeValue = parseMoney(document.getElementById('homeValue').value) || 0;
+    const monthlyPMI = parseMoney(document.getElementById('pmiPayment').value) || 0;
     
     const monthlyRate = interestRate / 100 / 12;
     const calculatedPI = remainingBalance * (monthlyRate * Math.pow(1 + monthlyRate, remainingTermMonths)) / 
@@ -2346,9 +2100,9 @@ function updatePaymentScenariosTable(remainingBalance, interestRate, remainingTe
 
 function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermMonths, currentPayment, extraPrincipal) {
     // Get annual bonus and PMI values to match main calculations
-    const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
-    const homeValue = parseFloat(document.getElementById('homeValue').value) || 0;
-    const monthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+    const annualBonus = parseMoney(document.getElementById('annualBonus').value) || 0;
+    const homeValue = parseMoney(document.getElementById('homeValue').value) || 0;
+    const monthlyPMI = parseMoney(document.getElementById('pmiPayment').value) || 0;
     
     // Calculate monthly payment details
     const monthlyRate = interestRate / 100 / 12;
@@ -2415,67 +2169,6 @@ function updateBiweeklyComparison(remainingBalance, interestRate, remainingTermM
 }
 
 // Add input event listeners for real-time validation
-document.addEventListener('DOMContentLoaded', function() {
-    initializeTheme();
-    
-    // Add input validation
-    const inputs = document.querySelectorAll('input[type="number"]');
-    inputs.forEach(input => {
-        input.addEventListener('input', function() {
-            if (this.value < 0) {
-                this.value = 0;
-            }
-        });
-    });
-    
-    // Add Enter key support
-    inputs.forEach(input => {
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                calculate();
-            }
-        });
-    });
-    
-    // Add toggle functionality for payment scenarios
-    const monthlyToggle = document.getElementById('monthlyToggle');
-    const biweeklyToggle = document.getElementById('biweeklyToggle');
-    
-    if (monthlyToggle && biweeklyToggle) {
-        monthlyToggle.addEventListener('click', function() {
-            monthlyToggle.classList.add('active');
-            biweeklyToggle.classList.remove('active');
-            
-            // Re-run scenarios in monthly mode if we have data
-            if (window.lastScenariosData) {
-                updatePaymentScenariosTable(
-                    window.lastScenariosData.remainingBalance,
-                    window.lastScenariosData.interestRate,
-                    window.lastScenariosData.remainingTermMonths,
-                    'monthly',
-                    window.lastScenariosData.currentPayment
-                );
-            }
-        });
-        
-        biweeklyToggle.addEventListener('click', function() {
-            biweeklyToggle.classList.add('active');
-            monthlyToggle.classList.remove('active');
-            
-            // Re-run scenarios in bi-weekly mode if we have data
-            if (window.lastScenariosData) {
-                updatePaymentScenariosTable(
-                    window.lastScenariosData.remainingBalance,
-                    window.lastScenariosData.interestRate,
-                    window.lastScenariosData.remainingTermMonths,
-                    'biweekly',
-                    window.lastScenariosData.currentPayment
-                );
-            }
-        });
-    }
-});
-
 // Tooltip functionality
 function showTooltip(type) {
     try {
@@ -2484,14 +2177,14 @@ function showTooltip(type) {
         const body = document.getElementById('tooltip-body');
         
         // Get current values for calculations
-        const originalBalance = parseFloat(document.getElementById('originalBalance').value) || 0;
-        const remainingBalance = parseFloat(document.getElementById('remainingBalance').value) || 0;
+        const originalBalance = parseMoney(document.getElementById('originalBalance').value) || 0;
+        const remainingBalance = parseMoney(document.getElementById('remainingBalance').value) || 0;
         const interestRate = parseFloat(document.getElementById('interestRate').value) || 0;
-        const homeValue = parseFloat(document.getElementById('homeValue').value) || 0;
+        const homeValue = parseMoney(document.getElementById('homeValue').value) || 0;
         const originalTerm = parseFloat(document.getElementById('originalTerm').value) || 0;
         const loanStartDate = document.getElementById('loanStartDate').value;
-        const extraPrincipal = parseFloat(document.getElementById('extraPrincipal').value) || 0;
-        const annualBonus = parseFloat(document.getElementById('annualBonus').value) || 0;
+        const extraPrincipal = parseMoney(document.getElementById('extraPrincipal').value) || 0;
+        const annualBonus = parseMoney(document.getElementById('annualBonus').value) || 0;
         
         // Calculate some derived values
         const monthlyRate = interestRate / 100 / 12;
@@ -2501,7 +2194,7 @@ function showTooltip(type) {
             : 0;
         
         // Use the actual PMI value from the field (whether calculated or manually entered)
-        const actualMonthlyPMI = parseFloat(document.getElementById('pmiPayment').value) || 0;
+        const actualMonthlyPMI = parseMoney(document.getElementById('pmiPayment').value) || 0;
         
         // Calculate what the auto-calculated PMI would be for comparison
         const originalLTV = originalBalance > 0 && homeValue > 0 ? (originalBalance / homeValue) * 100 : 0;
