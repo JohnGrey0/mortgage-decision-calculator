@@ -183,18 +183,12 @@
                 <!-- Summary Tab -->
                 <div id="summaryTab" class="tab-panel">
                     <div class="results-section" id="resultsSection">
-                        <div class="calculation-methodology">
-                            <h3>📋 Calculation Methodology 
-                                <span class="help-icon" onclick="showTooltip('methodology')" title="Click for detailed explanation">❓</span>
-                            </h3>
-                        </div>
 
                         <div class="summary-cards">
                             <div class="summary-card payoff">
-                                <h3>🏠 Mortgage Payoff Strategy 
+                                <h3>🏠 Mortgage Payoff 
                                     <span class="help-icon" onclick="showTooltip('payoff-strategy')" title="Click for detailed explanation">❓</span>
                                 </h3>
-                                <p class="strategy-description">Pay loan off early using extra principal payments. Shows total interest saved vs. current payment schedule.</p>
                                 <div class="metric">
                                     <span class="label">Current Maturity:</span>
                                     <span class="value" id="standardPayoffSummary">-</span>
@@ -203,59 +197,44 @@
                                     <span class="label">Accelerated Maturity:</span>
                                     <span class="value" id="acceleratedPayoffSummary">-</span>
                                 </div>
-                                <div class="metric">
+                                <div class="metric highlight">
                                     <span class="label">Interest Saved:</span>
                                     <span class="value" id="interestSaved">-</span>
                                 </div>
                                 <div class="metric">
-                                    <span class="label">Total Interest Paid:</span>
+                                    <span class="label">Total Interest (lifetime):</span>
                                     <span class="value" id="totalInterestPaid">-</span>
                                 </div>
                                 <div class="metric">
-                                    <span class="label">Total Lifetime Cost:</span>
+                                    <span class="label">Total Mortgage Cost:</span>
                                     <span class="value" id="totalMortgageCost">-</span>
                                 </div>
                             </div>
 
-                            <div class="summary-card investment">
-                                <h3>📈 Hybrid Investment Strategy 
-                                    <span class="help-icon" onclick="showTooltip('hybrid-strategy')" title="Click for detailed explanation">❓</span>
-                                </h3>
-                                <p class="strategy-description">Pay loan off early, then invest the total monthly payment amount (P&I + PMI + extra payments) for the remaining current loan term.</p>
-                                <div class="investment-scenarios">
-                                    <div class="scenario weak">
-                                        <span class="scenario-title">🐻 Weak (4%)</span>
-                                        <span class="scenario-value" id="weakReturn">-</span>
-                                    </div>
-                                    <div class="scenario average">
-                                        <span class="scenario-title">📈 Average (7%)</span>
-                                        <span class="scenario-value" id="averageReturn">-</span>
-                                    </div>
-                                    <div class="scenario strong">
-                                        <span class="scenario-title">🚀 Strong (10%)</span>
-                                        <span class="scenario-value" id="strongReturn">-</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="summary-card pure-investment">
-                                <h3>📊 Pure Investment Strategy 
+                            <div class="summary-card verdict">
+                                <h3>⚖️ Payoff vs Invest 
                                     <span class="help-icon" onclick="showTooltip('pure-investment')" title="Click for detailed explanation">❓</span>
                                 </h3>
-                                <p class="strategy-description">Instead of making extra mortgage payments, invest only the extra principal amount for the full current loan term period.</p>
-                                <div class="investment-scenarios">
-                                    <div class="scenario weak">
-                                        <span class="scenario-title">🐻 Weak (4%)</span>
-                                        <span class="scenario-value" id="pureWeakReturn">-</span>
+                                <p class="strategy-description" id="verdictDescription">Should your extra payments go toward the mortgage or into investments?</p>
+                                <div class="verdict-result" id="verdictResult">
+                                    <div class="verdict-banner" id="verdictBanner">-</div>
+                                </div>
+                                <div class="verdict-breakdown">
+                                    <div class="verdict-row">
+                                        <span class="label">🏠 Payoff then invest (7%):</span>
+                                        <span class="value" id="verdictPayoff">-</span>
                                     </div>
-                                    <div class="scenario average">
-                                        <span class="scenario-title">📈 Average (7%)</span>
-                                        <span class="scenario-value" id="pureAverageReturn">-</span>
+                                    <div class="verdict-row">
+                                        <span class="label">📈 Invest only (7%):</span>
+                                        <span class="value" id="verdictInvest">-</span>
                                     </div>
-                                    <div class="scenario strong">
-                                        <span class="scenario-title">🚀 Strong (10%)</span>
-                                        <span class="scenario-value" id="pureStrongReturn">-</span>
+                                    <div class="verdict-row verdict-diff">
+                                        <span class="label">Difference:</span>
+                                        <span class="value" id="verdictDiff">-</span>
                                     </div>
+                                </div>
+                                <div class="verdict-range" id="verdictRange">
+                                    <small>🐻 4% bear: <span id="verdictWeak">-</span> &nbsp;🐂 10% bull: <span id="verdictStrong">-</span></small>
                                 </div>
                             </div>
                         </div>
@@ -441,8 +420,8 @@
                     </div>
                     
                     <div class="chart-container">
-                        <h3>💰 Complete Strategy Comparison Over Full Term (Dynamic Tax Rates)</h3>
-                        <p class="chart-subtitle">Interest savings + hybrid investment vs pure investment strategy with realistic capital gains tax rates based on holding period and estimated income</p>
+                        <h3>⚖️ Payoff + Invest vs Invest Only</h3>
+                        <p class="chart-subtitle">Pay off early then invest freed payments vs invest extra from day one (after capital gains tax)</p>
                         <canvas id="combinedStrategyChart"></canvas>
                     </div>
                 </div>
