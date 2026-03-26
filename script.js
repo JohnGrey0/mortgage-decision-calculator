@@ -584,9 +584,8 @@ function toggleTheme() {
     localStorage.setItem('theme', newTheme);
     updateThemeIcon(newTheme);
     
-    // Update charts if they exist
-    if (balanceChart) updateChartTheme(balanceChart);
-    if (combinedStrategyChart) updateChartTheme(combinedStrategyChart);
+    // Rebuild charts from scratch with correct theme colors
+    calculate(true);
 }
 
 function updateThemeIcon(theme) {
@@ -636,8 +635,8 @@ function updateChartTheme(chart) {
                 if (scale.ticks) {
                     scale.ticks.color = textColor;
                 }
-                // Update grid color
-                if (scale.grid) {
+                // Update grid color — preserve function-based grids (custom year-tick logic)
+                if (scale.grid && typeof scale.grid.color !== 'function') {
                     scale.grid.color = gridColor;
                 }
                 // Update title color
@@ -1735,7 +1734,7 @@ function createBalanceChart(standard, accelerated) {
                             const index = context.tick?.value;
                             const label = dateLabels[index];
                             if (!label || !label.startsWith('Jan')) return 'transparent';
-                            return gridColor;
+                            return document.documentElement.getAttribute('data-theme') === 'dark' ? '#475569' : '#e2e8f0';
                         }
                     }
                 },
@@ -2065,7 +2064,7 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
                             const index = context.tick?.value;
                             const label = dateLabels[index];
                             if (!label || !label.startsWith('Jan')) return 'transparent';
-                            return gridColor;
+                            return document.documentElement.getAttribute('data-theme') === 'dark' ? '#475569' : '#e2e8f0';
                         }
                     }
                 },
