@@ -230,11 +230,10 @@ document.addEventListener('DOMContentLoaded', function() {
         calculatePMI();
     }
     
-    // Add PMI calculation listeners — triggers on original balance or remaining balance changes
+    // Add PMI calculation listeners — triggers on purchase price, remaining balance, or home value changes
     const remainingBalanceField = document.getElementById('remainingBalance');
-    if (originalBalanceField) {
-        if (remainingBalanceField) remainingBalanceField.addEventListener('input', calculatePMI);
-    }
+    if (remainingBalanceField) remainingBalanceField.addEventListener('input', calculatePMI);
+    if (homeValueField) homeValueField.addEventListener('input', calculatePMI);
     
     // Mark PMI as manually entered when user types in it
     if (pmiField) {
@@ -745,19 +744,19 @@ function formatPayoffDate(monthsFromNow) {
 }
 
 function calculatePMI() {
-    const originalBalance = parseMoney(document.getElementById('originalBalance').value);
+    const homeValue = parseMoney(document.getElementById('homeValue').value);
     const remainingBalance = parseMoney(document.getElementById('remainingBalance').value);
     const pmiField = document.getElementById('pmiPayment');
     const pmiNote = document.getElementById('pmiNote');
     
-    if (isNaN(originalBalance) || isNaN(remainingBalance) || originalBalance <= 0 || remainingBalance <= 0) {
+    if (isNaN(homeValue) || isNaN(remainingBalance) || homeValue <= 0 || remainingBalance <= 0) {
         pmiField.value = '';
         if (pmiNote) pmiNote.style.display = 'none';
         return;
     }
     
-    // Lender PMI cutoff: remaining balance / original loan amount
-    const loanRatio = (remainingBalance / originalBalance) * 100;
+    // PMI cutoff: remaining balance / original purchase price
+    const ltvRatio = (remainingBalance / homeValue) * 100;
     
     // Only auto-calculate if field hasn't been manually entered
     if (pmiField.dataset.calculated === 'false') {
@@ -765,9 +764,9 @@ function calculatePMI() {
         return;
     }
     
-    if (loanRatio > 80) {
-        // PMI required — estimate at 0.5% annually of original loan
-        const annualPMI = originalBalance * 0.005;
+    if (ltvRatio > 80) {
+        // PMI required — estimate at 0.5% annually of original purchase price
+        const annualPMI = homeValue * 0.005;
         const monthlyPMI = annualPMI / 12;
         pmiField.value = formatMoneyDisplay(Math.round(monthlyPMI));
         pmiField.dataset.calculated = 'true';
@@ -775,12 +774,12 @@ function calculatePMI() {
             pmiNote.style.display = 'none';
         }
     } else {
-        // Balance/original ≤ 80% — PMI should be eliminated
+        // LTV ≤ 80% — PMI should be eliminated
         pmiField.value = '$0';
         pmiField.dataset.calculated = 'true';
         if (pmiNote) {
-            const pct = loanRatio.toFixed(1);
-            pmiNote.textContent = `PMI set to $0 — balance is ${pct}% of original loan (≤ 80% threshold). Override by typing your actual PMI.`;
+            const pct = ltvRatio.toFixed(1);
+            pmiNote.textContent = `PMI auto-set to $0 — remaining balance is ${pct}% of purchase price ($${homeValue.toLocaleString()}), which is ≤ 80% LTV. Override by typing your actual PMI.`;
             pmiNote.style.display = 'block';
         }
     }
@@ -2187,7 +2186,7 @@ function showTooltip(type) {
         
         // Calculate what the auto-calculated PMI would be for comparison
         const originalLTV = originalBalance > 0 && homeValue > 0 ? (originalBalance / homeValue) * 100 : 0;
-        const autoCalculatedPMI = originalLTV > 80 ? (originalBalance * 0.005) / 12 : 0;
+        const autoCalculatedPMI = originalLTV > 80 ? (homeValue * 0.005) / 12 : 0;
         const pmiThreshold = homeValue * 0.8;
         
         // Check if PMI was manually entered
@@ -2782,13 +2781,13 @@ function showTooltip(type) {
                     <h6>🔢 Your PMI Details:</h6>
                     <ul class="value-list">
                         <li><span>Original Loan Amount:</span> <strong>$${originalBalance.toLocaleString()}</strong></li>
-                        <li><span>Original Home Value:</span> <strong>$${homeValue.toLocaleString()}</strong></li>
+                        <li><span>Original Purchase Price:</span> <strong>$${homeValue.toLocaleString()}</strong></li>
                         <li><span>Original LTV Ratio:</span> <strong>${originalLTV.toFixed(1)}%</strong></li>
                         <li><span>Down Payment:</span> <strong>${(100 - originalLTV).toFixed(1)}% ($${((homeValue - originalBalance)).toLocaleString()})</strong></li>
                         <li><span>PMI Required:</span> <strong>${originalLTV > 80 ? 'Yes (LTV > 80%)' : 'No (LTV ≤ 80%)'}</strong></li>
                         <li><span>Current PMI (in field):</span> <strong>$${actualMonthlyPMI.toLocaleString()}/month</strong></li>
                         <li><span>Auto-calculated PMI would be:</span> <strong>$${Math.round(autoCalculatedPMI).toLocaleString()}/month</strong></li>
-                        <li><span>Implied Annual Rate:</span> <strong>${actualMonthlyPMI > 0 ? ((actualMonthlyPMI * 12 / originalBalance) * 100).toFixed(2) : '0.00'}%</strong></li>
+                        <li><span>Implied Annual Rate:</span> <strong>${actualMonthlyPMI > 0 ? ((actualMonthlyPMI * 12 / homeValue) * 100).toFixed(2) : '0.00'}%</strong></li>
                         <li><span>PMI Status:</span> <strong>${isManuallyEntered ? 'Manually Entered' : 'Auto-Calculated'}</strong></li>
                         <li><span>Elimination Threshold:</span> <strong>$${pmiThreshold.toLocaleString()} (80% of home value)</strong></li>
                         <li><span>Current Balance:</span> <strong>$${remainingBalance.toLocaleString()}</strong></li>
@@ -2799,7 +2798,7 @@ function showTooltip(type) {
                     <div class="rate-comparison" style="margin-top: 15px; padding: 10px; background: var(--accent-color); border-radius: 8px;">
                         <h6 style="color: var(--text-primary); margin-bottom: 8px;">💡 Rate Comparison:</h6>
                         <p style="color: var(--text-primary); margin: 0; font-size: 0.9em;">
-                            <strong>Your Rate:</strong> ${((actualMonthlyPMI * 12 / originalBalance) * 100).toFixed(2)}% vs 
+                            <strong>Your Rate:</strong> ${((actualMonthlyPMI * 12 / homeValue) * 100).toFixed(2)}% vs 
                             <strong>Calculator Default:</strong> 0.50%
                             ${actualMonthlyPMI < autoCalculatedPMI ? ' - You have a better rate!' : ' - Your rate is higher than default'}
                         </p>
