@@ -1707,13 +1707,32 @@ function createBalanceChart(standard, accelerated) {
                     },
                     ticks: {
                         color: textColor,
-                        maxTicksLimit: 12,
+                        autoSkip: false,
+                        maxRotation: 0,
                         callback: function(value, index) {
-                            return index % Math.ceil(dateLabels.length / 12) === 0 ? this.getLabelForValue(value) : '';
+                            // Show labels at clean year boundaries
+                            const label = dateLabels[index];
+                            if (!label) return '';
+                            const isJan = label.startsWith('Jan');
+                            if (!isJan) return '';
+                            // Pick year interval based on term length
+                            const totalYears = Math.ceil(dateLabels.length / 12);
+                            const yearInterval = totalYears > 20 ? 5 : totalYears > 10 ? 2 : 1;
+                            const year = parseInt(label.split(' ')[1]);
+                            return year % yearInterval === 0 ? year.toString() : '';
                         }
                     },
                     grid: {
-                        color: gridColor
+                        color: function(context) {
+                            // Only show grid lines at labeled year ticks
+                            const index = context.tick?.value;
+                            const label = dateLabels[index];
+                            if (!label || !label.startsWith('Jan')) return 'transparent';
+                            const totalYears = Math.ceil(dateLabels.length / 12);
+                            const yearInterval = totalYears > 20 ? 5 : totalYears > 10 ? 2 : 1;
+                            const year = parseInt(label.split(' ')[1]);
+                            return year % yearInterval === 0 ? gridColor : 'transparent';
+                        }
                     }
                 },
                 y: {
@@ -1949,8 +1968,30 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
                 x: {
                     display: true,
                     title: { display: true, text: 'Timeline', color: textColor },
-                    ticks: { color: textColor, maxTicksLimit: 10 },
-                    grid: { color: gridColor }
+                    ticks: {
+                        color: textColor,
+                        autoSkip: false,
+                        maxRotation: 0,
+                        callback: function(value, index) {
+                            const label = dateLabels[index];
+                            if (!label || !label.startsWith('Jan')) return '';
+                            const totalYears = Math.ceil(dateLabels.length / 12);
+                            const yearInterval = totalYears > 20 ? 5 : totalYears > 10 ? 2 : 1;
+                            const year = parseInt(label.split(' ')[1]);
+                            return year % yearInterval === 0 ? year.toString() : '';
+                        }
+                    },
+                    grid: {
+                        color: function(context) {
+                            const index = context.tick?.value;
+                            const label = dateLabels[index];
+                            if (!label || !label.startsWith('Jan')) return 'transparent';
+                            const totalYears = Math.ceil(dateLabels.length / 12);
+                            const yearInterval = totalYears > 20 ? 5 : totalYears > 10 ? 2 : 1;
+                            const year = parseInt(label.split(' ')[1]);
+                            return year % yearInterval === 0 ? gridColor : 'transparent';
+                        }
+                    }
                 },
                 y: {
                     display: true,
