@@ -387,6 +387,7 @@ header h1 .title-text {
 
 .timeline-bar-container {
     position: relative;
+    margin-top: 50px;
 }
 
 .timeline-progress-bar {
@@ -448,16 +449,13 @@ header h1 .title-text {
 }
 
 .elapsed-pct-label {
-    position: absolute;
-    right: -2px;
-    transform: translateX(100%);
     font-size: 0.65rem;
     font-weight: 700;
-    color: var(--text-color);
+    color: #fff;
     white-space: nowrap;
     cursor: help;
-    padding-left: 6px;
     z-index: 7;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .loan-timeline-card.ahead-of-schedule .timeline-segment-elapsed {
@@ -482,8 +480,22 @@ header h1 .title-text {
     text-align: center;
 }
 
+.timeline-marker-above {
+    top: auto;
+    bottom: -6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 .timeline-marker-today {
     z-index: 6;
+}
+
+.timeline-marker-above .marker-label {
+    margin-top: 0;
+    margin-bottom: 2px;
+    order: -1;
 }
 
 .marker-line-today {
@@ -985,10 +997,14 @@ header h1 .title-text {
 }
 
 .summary-cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    display: flex;
+    justify-content: center;
     margin-bottom: 2rem;
+}
+
+.summary-cards .summary-card {
+    width: 100%;
+    max-width: 640px;
 }
 
 .summary-card {
@@ -1003,15 +1019,6 @@ header h1 .title-text {
     font-size: 1.3rem;
     margin-bottom: 1rem;
     color: var(--primary-color);
-}
-
-.summary-card.payoff {
-    background: var(--gradient-success);
-    color: white;
-}
-
-.summary-card.payoff h3 {
-    color: white;
 }
 
 .summary-card.verdict {
@@ -1107,11 +1114,26 @@ header h1 .title-text {
     color: var(--text-secondary);
 }
 
+.verdict-section {
+    margin-bottom: 0.5rem;
+}
+
+.verdict-section-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
 .verdict-breakdown {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
 .verdict-row {
@@ -1143,10 +1165,17 @@ header h1 .title-text {
     font-size: 0.8rem;
 }
 
-.metric.highlight {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 8px;
-    padding: 0.75rem;
+.verdict-interest-saved {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--gradient-success);
+    color: white;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    font-size: 1.05rem;
 }
 
 .chart-container {
@@ -1583,9 +1612,8 @@ header h1 .title-text {
         grid-template-columns: 1fr;
     }
     
-    .summary-cards {
-        grid-template-columns: 1fr;
-        gap: 1rem;
+    .summary-cards .summary-card {
+        max-width: 100%;
     }
     
     .tax-scenarios {

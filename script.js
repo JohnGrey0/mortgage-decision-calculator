@@ -254,7 +254,7 @@ function updateLoanTimeline(monthsElapsed, totalMonths, remainingMonths, startDa
         elapsedPctLabel.title = tooltipLines.join('\n');
 
         // Hide label if bar too narrow to fit it
-        elapsedPctLabel.style.display = elapsedPct < 3 ? 'none' : '';
+        elapsedPctLabel.style.display = elapsedPct < 12 ? 'none' : '';
     }
 
     // --- Today marker at elapsed edge ---
@@ -1095,6 +1095,12 @@ function calculate(autoRun = false) {
     const averageInvestment = calculateInvestmentGrowth(extraPrincipal, 7, standardPayoff.monthsToPayoff, annualBonus);
     const strongInvestment = calculateInvestmentGrowth(extraPrincipal, 10, standardPayoff.monthsToPayoff, annualBonus);
     
+    // Calculate investment scenarios at accelerated payoff horizon (short comparison)
+    const shortWeakInvestment = calculateInvestmentGrowth(extraPrincipal, 4, acceleratedPayoff.monthsToPayoff, annualBonus);
+    const shortAvgInvestment = calculateInvestmentGrowth(extraPrincipal, 7, acceleratedPayoff.monthsToPayoff, annualBonus);
+    const shortStrongInvestment = calculateInvestmentGrowth(extraPrincipal, 10, acceleratedPayoff.monthsToPayoff, annualBonus);
+    const shortInvestment = { weak: shortWeakInvestment, average: shortAvgInvestment, strong: shortStrongInvestment };
+    
     // Calculate hybrid phase 2: after accelerated payoff, invest freed payments for remaining term
     const currentPaymentPI = parseMoney(document.getElementById('currentPayment').value) || 0;
     const totalFreedMonthly = currentPaymentPI + extraPrincipal;
@@ -1108,7 +1114,7 @@ function calculate(autoRun = false) {
     };
     
     // Update summary cards
-    updateSummaryCards(standardPayoff, acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment, hybridPhase2);
+    updateSummaryCards(standardPayoff, acceleratedPayoff, weakInvestment, averageInvestment, strongInvestment, hybridPhase2, shortInvestment);
     
     // Update comparison table
     updateComparisonTable(standardPayoff, acceleratedPayoff, extraPrincipal, annualBonus);
@@ -1147,7 +1153,7 @@ function calculate(autoRun = false) {
 
 }
 
-function updateSummaryCards(standard, accelerated, weak, average, strong, hybridPhase2) {
+function updateSummaryCards(standard, accelerated, weak, average, strong, hybridPhase2, shortInvestment) {
     const currentDate = new Date();
     
     // Get loan details for historical calculation
@@ -1173,79 +1179,57 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
     
     const extraPrincipal = parseMoney(document.getElementById('extraPrincipal').value);
     
-    // Calculate maturity dates
-    const standardMaturityDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + standard.monthsToPayoff, 1);
-    const acceleratedMaturityDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + accelerated.monthsToPayoff, 1);
-    
-    // Update maturity dates
-    if (standard.hasAlreadyMadeExtraPayments) {
-        const originalMaturityDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + standard.monthsToOriginalMaturity, 1);
-        document.getElementById('standardPayoffSummary').innerHTML = `
-            <div style="font-size: 0.9em;">
-                <div><strong>Current Pace:</strong><br>${standardMaturityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</div>
-                <div style="margin-top: 6px; padding: 4px 8px; background: var(--surface-color); border-radius: 4px; border-left: 3px solid var(--warning-color);">
-                    <div style="font-size: 0.85em; color: var(--warning-color); font-weight: 600;">Original Schedule:</div>
-                    <div style="color: var(--text-primary); font-weight: 500;">${originalMaturityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}</div>
-                </div>
-            </div>
-        `;
-    } else {
-        document.getElementById('standardPayoffSummary').textContent = standardMaturityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
-    }
-    document.getElementById('acceleratedPayoffSummary').textContent = acceleratedMaturityDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+    // Update interest saved display
     document.getElementById('interestSaved').textContent = formatCurrency(interestSaved);
-    
-    // Calculate total interest and mortgage cost (including historical if applicable)
-    let totalInterestDisplay = accelerated.totalInterest;
-    let totalMortgageCostDisplay = originalBalance + accelerated.totalInterest;
-    
-    if (loanStartDate && originalBalance && remainingBalance) {
-        const historical = calculateHistoricalPayments(
-            originalBalance, remainingBalance, interestRate, originalTerm, loanStartDate
-        );
-        if (historical.monthsElapsed > 0) {
-            totalInterestDisplay = historical.historicalInterest + accelerated.totalInterest;
-            totalMortgageCostDisplay = historical.historicalTotal + accelerated.totalPaid;
-        }
-    }
-    
-    document.getElementById('totalInterestPaid').textContent = formatCurrency(totalInterestDisplay);
-    document.getElementById('totalMortgageCost').textContent = formatCurrency(totalMortgageCostDisplay);
     
     // --- Verdict card: Payoff vs Invest ---
     const estimatedIncome = getEstimatedIncomeFromMortgage();
-    const investmentPeriodMonths = standard.monthsToPayoff;
-    const taxRate = calculateDynamicTaxRate(investmentPeriodMonths, estimatedIncome);
+    const fullTermMonths = standard.monthsToPayoff;
+    const payoffMonths = accelerated.monthsToPayoff;
+    const fullTaxRate = calculateDynamicTaxRate(fullTermMonths, estimatedIncome);
+    const shortTaxRate = calculateDynamicTaxRate(payoffMonths, estimatedIncome);
     
-    // Payoff strategy (hybrid): interest saved + after-tax phase 2 investment of freed payments
+    // === Section 1: At payoff (short horizon) ===
+    // Payoff side = guaranteed interest saved
+    const shortPayoffValue = interestSaved;
+    
+    // Invest side = after-tax investment at accelerated payoff month
+    const shortInvestResults = {};
+    ['weak', 'average', 'strong'].forEach(label => {
+        const s = shortInvestment[label];
+        const gains = s.totalGains;
+        const tax = gains * (shortTaxRate / 100);
+        shortInvestResults[label] = s.totalContributions + (gains - tax);
+    });
+    
+    // === Section 2: Full term (hybrid vs pure) ===
+    // Payoff side (hybrid): interest saved + after-tax phase 2 investment of freed payments
     const payoffResults = {};
     ['weak', 'average', 'strong'].forEach(label => {
         let total = interestSaved;
         if (hybridPhase2 && hybridPhase2[label]) {
             const phase2 = hybridPhase2[label];
-            const phase2Tax = phase2.totalGains * (taxRate / 100);
+            const phase2Tax = phase2.totalGains * (fullTaxRate / 100);
             total += phase2.totalContributions + (phase2.totalGains - phase2Tax);
         }
         payoffResults[label] = total;
     });
     
-    // Pure investment values (after tax) for each scenario
-    const investScenarios = [
-        { data: weak, rate: 4, label: 'weak' },
-        { data: average, rate: 7, label: 'average' },
-        { data: strong, rate: 10, label: 'strong' }
-    ];
-    
+    // Invest side = after-tax investment for full standard term
     const investResults = {};
-    investScenarios.forEach(s => {
+    [{ data: weak, label: 'weak' }, { data: average, label: 'average' }, { data: strong, label: 'strong' }].forEach(s => {
         const gains = s.data.totalGains;
-        const tax = gains * (taxRate / 100);
+        const tax = gains * (fullTaxRate / 100);
         investResults[s.label] = s.data.totalContributions + (gains - tax);
     });
     
+    // Determine winner from full-term comparison (the definitive one)
     const payoffAvg = payoffResults.average;
     const investAvg = investResults.average;
-    const diff = investAvg - payoffAvg;
+    const fullDiff = investAvg - payoffAvg;
+    
+    const shortInvestAvg = shortInvestResults.average;
+    const shortDiff = shortInvestAvg - shortPayoffValue;
     
     // Update verdict card
     const verdictBanner = document.getElementById('verdictBanner');
@@ -1255,21 +1239,34 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
         verdictBanner.textContent = 'Add extra payments to compare';
         verdictBanner.className = 'verdict-banner neutral';
         verdictDescription.textContent = 'Enter a monthly overpayment or annual lump sum to see whether paying down your mortgage or investing comes out ahead.';
+        // Short section
+        document.getElementById('verdictShortPayoff').textContent = '-';
+        document.getElementById('verdictShortInvest').textContent = '-';
+        document.getElementById('verdictShortDiff').textContent = '-';
+        document.getElementById('verdictShortHeader').textContent = '📍 At payoff';
+        // Full section
         document.getElementById('verdictPayoff').textContent = '-';
         document.getElementById('verdictInvest').textContent = '-';
         document.getElementById('verdictDiff').textContent = '-';
+        document.getElementById('verdictFullHeader').textContent = '📅 Full term';
+        // Range
         document.getElementById('verdictWeak').textContent = '-';
         document.getElementById('verdictStrong').textContent = '-';
     } else {
-        document.getElementById('verdictPayoff').textContent = formatCurrency(payoffAvg);
-        document.getElementById('verdictInvest').textContent = formatCurrency(investAvg);
+        const payoffYears = Math.floor(payoffMonths / 12);
+        const payoffRemMonths = payoffMonths % 12;
+        const payoffTimeLabel = payoffRemMonths > 0 ? `${payoffYears}y ${payoffRemMonths}mo` : `${payoffYears}y`;
+        const fullYears = Math.floor(fullTermMonths / 12);
+        const fullRemMonths = fullTermMonths % 12;
+        const fullTimeLabel = fullRemMonths > 0 ? `${fullYears}y ${fullRemMonths}mo` : `${fullYears}y`;
         
-        if (diff > 0) {
-            verdictBanner.textContent = `📈 Investing wins by ${formatCurrency(diff)}`;
+        // Banner — based on full-term comparison
+        if (fullDiff > 0) {
+            verdictBanner.textContent = `📈 Investing wins by ${formatCurrency(fullDiff)}`;
             verdictBanner.className = 'verdict-banner invest-wins';
-            verdictDescription.textContent = `At average market returns (7%), investing your extra ${formatCurrency(extraPrincipal)}/mo comes out ahead — but it's not guaranteed.`;
-        } else if (diff < 0) {
-            verdictBanner.textContent = `🏠 Payoff + invest wins by ${formatCurrency(Math.abs(diff))}`;
+            verdictDescription.textContent = `At average market returns (7%), investing your extra ${formatCurrency(extraPrincipal)}/mo comes out ahead over the full term — but it's not guaranteed.`;
+        } else if (fullDiff < 0) {
+            verdictBanner.textContent = `🏠 Payoff + invest wins by ${formatCurrency(Math.abs(fullDiff))}`;
             verdictBanner.className = 'verdict-banner payoff-wins';
             verdictDescription.textContent = `Paying off early and then investing freed payments beats pure investing at average returns (7%).`;
         } else {
@@ -1278,7 +1275,19 @@ function updateSummaryCards(standard, accelerated, weak, average, strong, hybrid
             verdictDescription.textContent = `Both strategies produce roughly equal results at average market returns.`;
         }
         
-        document.getElementById('verdictDiff').textContent = (diff >= 0 ? '+' : '') + formatCurrency(diff);
+        // Short section (at payoff)
+        document.getElementById('verdictShortHeader').textContent = `📍 At payoff (${payoffTimeLabel})`;
+        document.getElementById('verdictShortPayoff').textContent = formatCurrency(shortPayoffValue) + ' saved';
+        document.getElementById('verdictShortInvest').textContent = formatCurrency(shortInvestAvg);
+        document.getElementById('verdictShortDiff').textContent = (shortDiff >= 0 ? '+' : '') + formatCurrency(shortDiff);
+        
+        // Full section (hybrid vs pure)
+        document.getElementById('verdictFullHeader').textContent = `📅 Full term (${fullTimeLabel})`;
+        document.getElementById('verdictPayoff').textContent = formatCurrency(payoffAvg);
+        document.getElementById('verdictInvest').textContent = formatCurrency(investAvg);
+        document.getElementById('verdictDiff').textContent = (fullDiff >= 0 ? '+' : '') + formatCurrency(fullDiff);
+        
+        // Range (full-term, invest vs payoff)
         document.getElementById('verdictWeak').textContent = formatCurrency(investResults.weak) + ' vs ' + formatCurrency(payoffResults.weak);
         document.getElementById('verdictStrong').textContent = formatCurrency(investResults.strong) + ' vs ' + formatCurrency(payoffResults.strong);
     }
@@ -2372,38 +2381,6 @@ function showTooltip(type) {
                         <li><span>Annual Lump Sum:</span> <strong>$${annualBonus.toLocaleString()}</strong></li>
                         <li><span>Current Monthly PMI:</span> <strong>$${actualMonthlyPMI.toLocaleString()}</strong></li>
                         <li><span>PMI Reinvestment Benefit:</span> <strong>+$${actualMonthlyPMI.toLocaleString()}/month when eliminated</strong></li>
-                    </ul>
-                </div>
-            `;
-            break;
-            
-        case 'payoff-strategy':
-            title.textContent = '🏠 Mortgage Payoff Strategy - Calculation Details';
-            content = `
-                <div class="calculation-section">
-                    <h5>📊 Standard vs Accelerated Comparison</h5>
-                    <p>Compares standard payment schedule against accelerated payments with extra principal.</p>
-                    <div class="formula">Interest Saved = Standard Total Interest - Accelerated Total Interest</div>
-                </div>
-                
-                <div class="calculation-section">
-                    <h5>⚡ Acceleration Factors</h5>
-                    <p>Multiple factors accelerate payoff:</p>
-                    <ul>
-                        <li>Monthly extra principal payments</li>
-                        <li>Annual lump sum payments</li>
-                        <li>PMI reinvestment (when eliminated)</li>
-                    </ul>
-                </div>
-                
-                <div class="current-values">
-                    <h6>🔢 Your Payoff Acceleration:</h6>
-                    <ul class="value-list">
-                        <li><span>Standard Monthly Payment:</span> <strong>$${(monthlyPI + actualMonthlyPMI).toLocaleString()}</strong></li>
-                        <li><span>Your Monthly Overpayment:</span> <strong>$${extraPrincipal.toLocaleString()}</strong></li>
-                        <li><span>Annual Lump Sum:</span> <strong>$${annualBonus.toLocaleString()}</strong></li>
-                        <li><span>Future PMI Reinvestment:</span> <strong>+$${actualMonthlyPMI.toLocaleString()}/month</strong></li>
-                        <li><span>Total Monthly Payment (after PMI ends):</span> <strong>$${(monthlyPI + extraPrincipal + actualMonthlyPMI).toLocaleString()}</strong></li>
                     </ul>
                 </div>
             `;

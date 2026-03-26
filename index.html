@@ -40,7 +40,7 @@
                     <div class="calculator-section">
                         <div class="input-grid">
                             <div class="input-group">
-                                <h3>🏡 Original Loan Terms 
+                                <h3>Original Loan Terms 
                                     <span class="help-icon" onclick="showTooltip('mortgage-details')" title="Click for detailed explanation">❓</span>
                                 </h3>
                                 <div class="form-row-pair">
@@ -74,7 +74,7 @@
                             </div>
 
                             <div class="input-group">
-                                <h3>📍 Current Loan Status 
+                                <h3>Current Loan Status 
                                     <span class="help-icon" onclick="showTooltip('calculated-values')" title="Click for detailed explanation">❓</span>
                                 </h3>
                                 <div class="form-row">
@@ -100,12 +100,12 @@
                             </div>
 
                             <div class="input-group">
-                                <h3>💰 Extra Payments 
+                                <h3>Extra Payments 
                                     <span class="help-icon" onclick="showTooltip('payment-info')" title="Click for detailed explanation">❓</span>
                                 </h3>
                                 <div class="form-row">
                                     <label for="extraPrincipal">Monthly Overpayment ($)</label>
-                                    <input type="text" inputmode="decimal" id="extraPrincipal" value="0" autocomplete="off">
+                                    <input type="text" inputmode="decimal" id="extraPrincipal" value="50" autocomplete="off">
                                     <small class="field-note">Additional monthly amount going directly to principal</small>
                                 </div>
                                 <div class="form-row">
@@ -126,17 +126,17 @@
                                     </div>
                                     <div class="timeline-segment timeline-segment-current" id="segCurrent" style="display:none"></div>
                                     <div class="timeline-segment timeline-segment-extra" id="segExtra" style="display:none"></div>
-                                    <div class="timeline-marker" id="markerCurrent" style="display:none">
-                                        <div class="marker-line marker-line-current"></div>
+                                    <div class="timeline-marker timeline-marker-above" id="markerCurrent" style="display:none">
                                         <div class="marker-label"><span id="markerCurrentDate"></span><br>Current pace</div>
+                                        <div class="marker-line marker-line-current"></div>
                                     </div>
                                     <div class="timeline-marker" id="markerExtra" style="display:none">
                                         <div class="marker-line marker-line-extra"></div>
                                         <div class="marker-label"><span id="markerExtraDate"></span><br>With extra</div>
                                     </div>
-                                    <div class="timeline-marker timeline-marker-today" id="markerToday">
-                                        <div class="marker-line marker-line-today"></div>
+                                    <div class="timeline-marker timeline-marker-today timeline-marker-above" id="markerToday">
                                         <div class="marker-label marker-label-today"><span id="markerTodayDate"></span><br>Today</div>
+                                        <div class="marker-line marker-line-today"></div>
                                     </div>
                                 </div>
                                 <div class="timeline-endpoints">
@@ -185,32 +185,6 @@
                     <div class="results-section" id="resultsSection">
 
                         <div class="summary-cards">
-                            <div class="summary-card payoff">
-                                <h3>🏠 Mortgage Payoff 
-                                    <span class="help-icon" onclick="showTooltip('payoff-strategy')" title="Click for detailed explanation">❓</span>
-                                </h3>
-                                <div class="metric">
-                                    <span class="label">Current Maturity:</span>
-                                    <span class="value" id="standardPayoffSummary">-</span>
-                                </div>
-                                <div class="metric">
-                                    <span class="label">Accelerated Maturity:</span>
-                                    <span class="value" id="acceleratedPayoffSummary">-</span>
-                                </div>
-                                <div class="metric highlight">
-                                    <span class="label">Interest Saved:</span>
-                                    <span class="value" id="interestSaved">-</span>
-                                </div>
-                                <div class="metric">
-                                    <span class="label">Total Interest (lifetime):</span>
-                                    <span class="value" id="totalInterestPaid">-</span>
-                                </div>
-                                <div class="metric">
-                                    <span class="label">Total Mortgage Cost:</span>
-                                    <span class="value" id="totalMortgageCost">-</span>
-                                </div>
-                            </div>
-
                             <div class="summary-card verdict">
                                 <h3>⚖️ Payoff vs Invest 
                                     <span class="help-icon" onclick="showTooltip('pure-investment')" title="Click for detailed explanation">❓</span>
@@ -219,20 +193,48 @@
                                 <div class="verdict-result" id="verdictResult">
                                     <div class="verdict-banner" id="verdictBanner">-</div>
                                 </div>
-                                <div class="verdict-breakdown">
-                                    <div class="verdict-row">
-                                        <span class="label">🏠 Payoff then invest (7%):</span>
-                                        <span class="value" id="verdictPayoff">-</span>
-                                    </div>
-                                    <div class="verdict-row">
-                                        <span class="label">📈 Invest only (7%):</span>
-                                        <span class="value" id="verdictInvest">-</span>
-                                    </div>
-                                    <div class="verdict-row verdict-diff">
-                                        <span class="label">Difference:</span>
-                                        <span class="value" id="verdictDiff">-</span>
+
+                                <div class="verdict-interest-saved">
+                                    <span class="label">🏠 Interest Saved:</span>
+                                    <span class="value" id="interestSaved">-</span>
+                                </div>
+
+                                <div class="verdict-section">
+                                    <div class="verdict-section-header" id="verdictShortHeader">📍 At payoff</div>
+                                    <div class="verdict-breakdown">
+                                        <div class="verdict-row">
+                                            <span class="label">🏠 Interest saved:</span>
+                                            <span class="value" id="verdictShortPayoff">-</span>
+                                        </div>
+                                        <div class="verdict-row">
+                                            <span class="label">📈 Invest only (7%):</span>
+                                            <span class="value" id="verdictShortInvest">-</span>
+                                        </div>
+                                        <div class="verdict-row verdict-diff">
+                                            <span class="label">Difference:</span>
+                                            <span class="value" id="verdictShortDiff">-</span>
+                                        </div>
                                     </div>
                                 </div>
+
+                                <div class="verdict-section">
+                                    <div class="verdict-section-header" id="verdictFullHeader">📅 Full term</div>
+                                    <div class="verdict-breakdown">
+                                        <div class="verdict-row">
+                                            <span class="label">🏠 Payoff then invest (7%):</span>
+                                            <span class="value" id="verdictPayoff">-</span>
+                                        </div>
+                                        <div class="verdict-row">
+                                            <span class="label">📈 Invest only (7%):</span>
+                                            <span class="value" id="verdictInvest">-</span>
+                                        </div>
+                                        <div class="verdict-row verdict-diff">
+                                            <span class="label">Difference:</span>
+                                            <span class="value" id="verdictDiff">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="verdict-range" id="verdictRange">
                                     <small>🐻 4% bear: <span id="verdictWeak">-</span> &nbsp;🐂 10% bull: <span id="verdictStrong">-</span></small>
                                 </div>
