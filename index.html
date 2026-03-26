@@ -52,7 +52,7 @@
                                     <div class="form-row">
                                         <label for="homeValue">Home Value ($)</label>
                                         <input type="text" inputmode="decimal" id="homeValue" value="379900" autocomplete="off">
-                                        <small class="field-note">Purchase price or appraised value</small>
+                                        <small class="field-note">Purchase price</small>
                                     </div>
                                 </div>
                                 <div class="form-row-pair">
@@ -80,14 +80,14 @@
                                 <div class="form-row">
                                     <label for="remainingBalance">Remaining Balance ($)</label>
                                     <input type="text" inputmode="decimal" id="remainingBalance" value="299999.96" autocomplete="off">
-                                    <small class="field-note">Current principal balance owed</small>
+                                    <small class="field-note">Current principal</small>
                                 </div>
                                 <div class="form-row calculated-field">
                                     <label for="currentPayment">Monthly P&I Payment ($) 
                                         <span class="help-icon" onclick="showTooltip('pi-payment')" title="Click for P&I payment details">❓</span>
                                     </label>
                                     <input type="text" id="currentPayment" readonly>
-                                    <small class="field-note">Automatically calculated from loan terms (Principal + Interest only)</small>
+                                    <small class="field-note">Auto-calculated from loan terms (Principal + Interest only)</small>
                                 </div>
                                 <div class="form-row calculated-field">
                                     <label for="pmiPayment">Monthly PMI ($) 
@@ -177,11 +177,6 @@
                             <input type="hidden" id="remainingTerm">
                             <input type="hidden" id="calculatedPayoffDate">
                         </div>
-
-                        <button class="calculate-btn" onclick="calculate()">
-                            <span>Calculate & Compare</span>
-                            <span class="btn-icon">⚡</span>
-                        </button>
                     </div>
                 </div>
 

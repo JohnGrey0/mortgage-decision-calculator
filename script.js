@@ -440,6 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 loanStartDateText.value = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
                 calculateRemainingTerm();
                 updatePIVerificationCard();
+                scheduleCalculate();
             }
         }
         loanStartDateText.addEventListener('blur', syncStartDate);
@@ -455,8 +456,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
         
+    // Debounced auto-calculate for all tabs
+    let calcTimer = null;
+    function scheduleCalculate() {
+        clearTimeout(calcTimer);
+        calcTimer = setTimeout(() => calculate(true), 300);
+    }
+    
     // Calculate on page load
     calculateRemainingTerm();
+    calculate(true);
     
     // Add real-time listeners for remaining balance to trigger comparison updates
     if (remainingBalance) {
@@ -522,14 +531,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Add Enter key support on all interactive inputs
+    // Wire all interactive inputs to auto-calculate everything
     const allInputs = document.querySelectorAll('input[type="number"], input[type="text"]:not([readonly]), input[type="month"]');
     allInputs.forEach(input => {
-        input.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                calculate();
-            }
-        });
+        input.addEventListener('input', scheduleCalculate);
+        input.addEventListener('change', scheduleCalculate);
     });
     
     // Add toggle functionality for payment scenarios
@@ -1045,20 +1051,13 @@ function calculatePMI() {
         pmiField.dataset.calculated = 'true';
         if (pmiNote) {
             const pct = ltvRatio.toFixed(1);
-            pmiNote.textContent = `PMI auto-set to $0 — remaining balance is ${pct}% of purchase price ($${homeValue.toLocaleString()}), which is ≤ 80% LTV. Override by typing your actual PMI.`;
+            pmiNote.textContent = `No PMI needed — LTV is ${pct}% (≤ 80%)`;
             pmiNote.style.display = 'block';
         }
     }
 }
 
 function calculate(autoRun = false) {
-    const button = document.querySelector('.calculate-btn');
-    
-    // Only show loading animation if this is a user-initiated calculation
-    if (!autoRun) {
-        button.classList.add('loading');
-    }
-    
     // Get input values
     const currentPayment = parseMoney(document.getElementById('currentPayment').value);
     const extraPrincipal = parseMoney(document.getElementById('extraPrincipal').value);
@@ -1077,9 +1076,8 @@ function calculate(autoRun = false) {
     if (isNaN(currentPayment) || isNaN(extraPrincipal) || 
         isNaN(originalBalance) || isNaN(remainingBalance) || isNaN(interestRate) || 
         isNaN(originalTerm) || !remainingTerm) {
-        alert('Please fill in all required fields with valid numbers and ensure loan start date is entered.');
         if (!autoRun) {
-            button.classList.remove('loading');
+            alert('Please fill in all required fields with valid numbers and ensure loan start date is entered.');
         }
         return;
     }
@@ -1170,23 +1168,7 @@ function calculate(autoRun = false) {
     createBalanceChart(standardPayoff, acceleratedPayoff);
     createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weakInvestment, averageInvestment, strongInvestment);
     
-    // Results are now always visible in tab structure
-    // Switch to summary tab automatically after calculation (only for manual calculations)
-    if (!autoRun) {
-        setTimeout(() => {
-            const summaryTabBtn = document.querySelector('[onclick*="summaryTab"]');
-            if (summaryTabBtn) {
-                summaryTabBtn.click();
-            }
-        }, 100);
-    }
-    
-    // Only remove loading state if it was added (not during auto-run)
-    if (!autoRun) {
-        setTimeout(() => {
-            button.classList.remove('loading');
-        }, 500);
-    }
+
 }
 
 function updateSummaryCards(standard, accelerated, weak, average, strong, hybridWeak, hybridAverage, hybridStrong) {
