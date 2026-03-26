@@ -49,6 +49,26 @@ function initializeTheme() {
     updateThemeIcon(savedTheme);
 }
 
+// Parse flexible date text like "Dec 2022", "12/2022", "December 2022", "2022-12"
+function parseDateText(text) {
+    if (!text) return null;
+    text = text.trim();
+    // Try YYYY-MM
+    let m = text.match(/^(\d{4})-(\d{1,2})$/);
+    if (m) return m[1] + '-' + m[2].padStart(2, '0');
+    // Try MM/YYYY or M/YYYY
+    m = text.match(/^(\d{1,2})\/(\d{4})$/);
+    if (m) return m[2] + '-' + m[1].padStart(2, '0');
+    // Try month name + year
+    const months = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12,
+        january:1, february:2, march:3, april:4, june:6, july:7, august:8, september:9, october:10, november:11, december:12 };
+    m = text.match(/^([a-zA-Z]+)\s*,?\s*(\d{4})$/);
+    if (m && months[m[1].toLowerCase()]) {
+        return m[2] + '-' + String(months[m[1].toLowerCase()]).padStart(2, '0');
+    }
+    return null;
+}
+
 // Calculate remaining term based on loan start date and original term
 function calculateRemainingTerm() {
     const loanStartDate = document.getElementById('loanStartDate').value;
@@ -234,7 +254,7 @@ function updateLoanTimeline(monthsElapsed, totalMonths, remainingMonths, startDa
         elapsedPctLabel.title = tooltipLines.join('\n');
 
         // Hide label if bar too narrow to fit it
-        elapsedPctLabel.style.display = elapsedPct < 12 ? 'none' : '';
+        elapsedPctLabel.style.display = elapsedPct < 3 ? 'none' : '';
     }
 
     // --- Today marker at elapsed edge ---
@@ -402,24 +422,41 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     const loanStartDate = document.getElementById('loanStartDate');
+    const loanStartDateText = document.getElementById('loanStartDateText');
     const originalTerm = document.getElementById('originalTerm');
     const currentPayment = document.getElementById('currentPayment');
     const remainingBalance = document.getElementById('remainingBalance');
     const interestRate = document.getElementById('interestRate');
     
-    if (loanStartDate && originalTerm) {
-        loanStartDate.addEventListener('change', () => {
-            calculateRemainingTerm();
-            updatePIVerificationCard();
+    // Sync text input → hidden loanStartDate value
+    if (loanStartDateText && loanStartDate) {
+        function syncStartDate() {
+            const parsed = parseDateText(loanStartDateText.value);
+            if (parsed && parsed !== loanStartDate.value) {
+                loanStartDate.value = parsed;
+                // Reformat text to readable form
+                const [y, m] = parsed.split('-');
+                const d = new Date(parseInt(y), parseInt(m) - 1);
+                loanStartDateText.value = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                calculateRemainingTerm();
+                updatePIVerificationCard();
+            }
+        }
+        loanStartDateText.addEventListener('blur', syncStartDate);
+        loanStartDateText.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); loanStartDateText.blur(); }
         });
+    }
+
+    if (originalTerm) {
         originalTerm.addEventListener('input', () => {
             calculateRemainingTerm();
             updatePIVerificationCard();
         });
-        
-        // Calculate on page load
-        calculateRemainingTerm();
     }
+        
+    // Calculate on page load
+    calculateRemainingTerm();
     
     // Add real-time listeners for remaining balance to trigger comparison updates
     if (remainingBalance) {

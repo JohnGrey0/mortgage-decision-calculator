@@ -277,13 +277,13 @@ header {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 3rem;
-    padding: 1.5rem 0;
+    margin-bottom: 1rem;
+    padding: 0.6rem 0;
     position: relative;
 }
 
 header h1 {
-    font-size: 2.5rem;
+    font-size: 1.5rem;
     font-weight: 700;
     text-align: center;
 }
@@ -299,14 +299,14 @@ header h1 .title-text {
     background: var(--card-color);
     border: 2px solid var(--border-color);
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
+    width: 36px;
+    height: 36px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     position: absolute;
     right: 0;
 }
@@ -435,16 +435,20 @@ header h1 .title-text {
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .elapsed-pct-label {
-    font-size: 0.7rem;
+    position: absolute;
+    right: -2px;
+    transform: translateX(100%);
+    font-size: 0.65rem;
     font-weight: 700;
-    color: #fff;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    color: var(--text-color);
     white-space: nowrap;
     cursor: help;
+    padding-left: 6px;
+    z-index: 7;
 }
 
 .loan-timeline-card.ahead-of-schedule .timeline-segment-elapsed {
@@ -518,7 +522,8 @@ header h1 .title-text {
 
 .timeline-bar-legend {
     display: flex;
-    gap: 1rem;
+    justify-content: center;
+    gap: 1.5rem;
     margin-top: 0.5rem;
     font-size: 0.7rem;
     color: var(--text-secondary);
@@ -1681,64 +1686,94 @@ header h1 .title-text {
     color: var(--text-secondary);
 }
 
-.disclaimer-footer {
-    background: var(--surface-color);
-    border-top: 2px solid var(--border-color);
-    margin-top: 40px;
-    padding: 30px 20px;
-    text-align: left;
-}
-
-.footer-content {
-    max-width: 1600px;
-    margin: 0 auto;
-}
-
-.footer-content h4 {
-    color: var(--primary-color);
-    margin: 0 0 20px 0;
-    font-size: 18px;
+/* Footer */
+.site-footer {
     display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 8px;
+    gap: 1rem;
+    padding: 1rem 0;
+    margin-top: 2rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
 }
 
-.footer-content p {
-    margin: 0 0 16px 0;
-    font-size: 13px;
+.footer-disclaimer-btn {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0;
+}
+
+.footer-disclaimer-btn:hover {
+    opacity: 0.8;
+}
+
+.copyright {
+    font-weight: 500;
+}
+
+/* Disclaimer Dialog */
+.disclaimer-dialog {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0;
+    max-width: 640px;
+    width: 90%;
+    margin: auto;
+    background: var(--surface-color);
+    color: var(--text-color);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.disclaimer-dialog::backdrop {
+    background: rgba(0,0,0,0.5);
+}
+
+.disclaimer-dialog-content {
+    padding: 1.5rem 2rem;
+}
+
+.disclaimer-dialog-content h4 {
+    color: var(--primary-color);
+    margin: 0 0 1rem 0;
+    font-size: 1.1rem;
+}
+
+.disclaimer-dialog-content p {
+    margin: 0 0 0.75rem 0;
+    font-size: 0.8rem;
     line-height: 1.6;
     color: var(--text-secondary);
 }
 
-.footer-content p strong {
-    color: var(--text-primary);
+.disclaimer-dialog-content p strong {
+    color: var(--text-color);
+}
+
+.disclaimer-close-btn {
+    display: block;
+    margin: 1rem auto 0;
+    padding: 0.5rem 2rem;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
     font-weight: 600;
 }
 
-.copyright {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-color);
-    font-size: 12px;
-    text-align: center;
-    color: var(--text-secondary);
-    font-weight: 500;
+.disclaimer-close-btn:hover {
+    opacity: 0.9;
 }
 
 /* Dark theme adjustments for disclaimers */
 [data-theme="dark"] .disclaimer-banner {
     background: linear-gradient(135deg, #2d3748, #4a5568);
     border-color: var(--border-color);
-}
-
-[data-theme="dark"] .disclaimer-content h3 {
-    color: var(--primary-color);
-}
-
-[data-theme="dark"] .disclaimer-content p {
-    color: var(--text-secondary);
-}
-
-[data-theme="dark"] .disclaimer-footer {
-    background: var(--surface-color);
 }
