@@ -48,45 +48,46 @@
                     <div class="calculator-section">
                         <div class="input-grid">
                             <div class="input-group">
-                                <h3>🏡 Mortgage Details 
+                                <h3>🏡 Original Loan Terms 
                                     <span class="help-icon" onclick="showTooltip('mortgage-details')" title="Click for detailed explanation">❓</span>
                                 </h3>
-                                <div class="form-row">
-                                    <label for="originalBalance">Original Loan Amount ($)</label>
-                                    <input type="text" inputmode="decimal" id="originalBalance" value="341910" autocomplete="off">
-                                    <small class="field-note">Total amount originally borrowed</small>
+                                <div class="form-row-pair">
+                                    <div class="form-row">
+                                        <label for="originalBalance">Loan Amount ($)</label>
+                                        <input type="text" inputmode="decimal" id="originalBalance" value="341910" autocomplete="off">
+                                        <small class="field-note">Amount originally borrowed</small>
+                                    </div>
+                                    <div class="form-row">
+                                        <label for="homeValue">Home Value ($)</label>
+                                        <input type="text" inputmode="decimal" id="homeValue" value="379900" autocomplete="off">
+                                        <small class="field-note">Purchase price or appraised value</small>
+                                    </div>
                                 </div>
-                                <div class="form-row">
-                                    <label for="homeValue">Original Home Value ($)</label>
-                                    <input type="text" inputmode="decimal" id="homeValue" value="379900" autocomplete="off">
-                                    <small class="field-note">Original purchase price or appraised value when loan originated</small>
+                                <div class="form-row-trio">
+                                    <div class="form-row">
+                                        <label for="interestRate">Rate (%)</label>
+                                        <input type="number" id="interestRate" value="5.75" step="0.1">
+                                    </div>
+                                    <div class="form-row">
+                                        <label for="originalTerm">Term (yrs)</label>
+                                        <input type="number" id="originalTerm" value="30" step="1">
+                                    </div>
+                                    <div class="form-row">
+                                        <label for="loanStartDate">Start Date</label>
+                                        <input type="month" id="loanStartDate" value="2022-12">
+                                    </div>
                                 </div>
+                            </div>
+
+                            <div class="input-group">
+                                <h3>📍 Current Loan Status 
+                                    <span class="help-icon" onclick="showTooltip('calculated-values')" title="Click for detailed explanation">❓</span>
+                                </h3>
                                 <div class="form-row">
                                     <label for="remainingBalance">Remaining Balance ($)</label>
                                     <input type="text" inputmode="decimal" id="remainingBalance" value="299999.96" autocomplete="off">
                                     <small class="field-note">Current principal balance owed</small>
                                 </div>
-                                <div class="form-row">
-                                    <label for="interestRate">Interest Rate (%)</label>
-                                    <input type="number" id="interestRate" value="5.75" step="0.1">
-                                    <small class="field-note">Annual interest rate on your loan</small>
-                                </div>
-                                <div class="form-row">
-                                    <label for="loanStartDate">Loan Start Date</label>
-                                    <input type="month" id="loanStartDate" value="2022-12">
-                                    <small class="field-note">When your first payment happened</small>
-                                </div>
-                                <div class="form-row">
-                                    <label for="originalTerm">Original Loan Term (years)</label>
-                                    <input type="number" id="originalTerm" value="30" step="1">
-                                    <small class="field-note">Original length of your loan (typically 15 or 30 years)</small>
-                                </div>
-                            </div>
-
-                            <div class="input-group">
-                                <h3>🔢 Calculated Values 
-                                    <span class="help-icon" onclick="showTooltip('calculated-values')" title="Click for detailed explanation">❓</span>
-                                </h3>
                                 <div class="form-row calculated-field">
                                     <label for="currentPayment">Monthly P&I Payment ($) 
                                         <span class="help-icon" onclick="showTooltip('pi-payment')" title="Click for P&I payment details">❓</span>
@@ -102,25 +103,10 @@
                                     <small class="field-note">Calculated at 0.5% annually, or enter your actual PMI amount</small>
                                     <small id="pmiNote" class="field-note" style="display:none; color: var(--success-color); font-weight: 600;"></small>
                                 </div>
-                                <div class="form-row calculated-field">
-                                    <label for="remainingPayments">Remaining Payments (Current)</label>
-                                    <input type="text" id="remainingPayments" readonly>
-                                    <small class="field-note">Number of payments left based on current balance without extra principal</small>
-                                </div>
-                                <div class="form-row calculated-field">
-                                    <label for="remainingTerm">Remaining Term</label>
-                                    <input type="text" id="remainingTerm" readonly>
-                                    <small class="field-note">Time remaining on current payment schedule (years and months)</small>
-                                </div>
-                                <div class="form-row calculated-field">
-                                    <label for="calculatedPayoffDate">Current Maturity</label>
-                                    <input type="text" id="calculatedPayoffDate" readonly>
-                                    <small class="field-note">When the loan would be fully paid off at the current pace</small>
-                                </div>
                             </div>
 
                             <div class="input-group">
-                                <h3>💰 Payment Info 
+                                <h3>💰 Extra Payments 
                                     <span class="help-icon" onclick="showTooltip('payment-info')" title="Click for detailed explanation">❓</span>
                                 </h3>
                                 <div class="form-row">
@@ -134,6 +120,68 @@
                                     <small class="field-note">Yearly lump sum applied to principal (e.g., tax refund, work bonus)</small>
                                 </div>
                             </div>
+                        </div>
+
+                        <div class="loan-timeline-card" id="loanTimelineCard">
+                            <div class="timeline-header" id="timelineHeader">📅 Loan Timeline</div>
+                            <div class="timeline-bar-container">
+                                <div class="timeline-progress-bar" id="timelineBar">
+                                    <div class="timeline-ticks" id="timelineTicks"></div>
+                                    <div class="timeline-segment timeline-segment-elapsed" id="segElapsed">
+                                        <span class="elapsed-pct-label" id="elapsedPctLabel"></span>
+                                    </div>
+                                    <div class="timeline-segment timeline-segment-current" id="segCurrent" style="display:none"></div>
+                                    <div class="timeline-segment timeline-segment-extra" id="segExtra" style="display:none"></div>
+                                    <div class="timeline-marker" id="markerCurrent" style="display:none">
+                                        <div class="marker-line marker-line-current"></div>
+                                        <div class="marker-label"><span id="markerCurrentDate"></span><br>Current pace</div>
+                                    </div>
+                                    <div class="timeline-marker" id="markerExtra" style="display:none">
+                                        <div class="marker-line marker-line-extra"></div>
+                                        <div class="marker-label"><span id="markerExtraDate"></span><br>With extra</div>
+                                    </div>
+                                    <div class="timeline-marker timeline-marker-today" id="markerToday">
+                                        <div class="marker-line marker-line-today"></div>
+                                        <div class="marker-label marker-label-today"><span id="markerTodayDate"></span><br>Today</div>
+                                    </div>
+                                </div>
+                                <div class="timeline-endpoints">
+                                    <span class="timeline-start" id="loanStartLabel"></span>
+                                    <span class="timeline-end" id="loanEndLabel"></span>
+                                </div>
+                                <div class="timeline-bar-legend" id="timelineBarLegend">
+                                    <span class="legend-item"><span class="legend-dot legend-dot-elapsed"></span> Paid</span>
+                                    <span class="legend-item" id="legendCurrent" style="display:none"><span class="legend-dot legend-dot-current"></span> Current pace</span>
+                                    <span class="legend-item" id="legendExtra" style="display:none"><span class="legend-dot legend-dot-extra"></span> With extra payments</span>
+                                    <span class="legend-item"><span class="legend-dot legend-dot-remaining"></span> Remaining (original)</span>
+                                </div>
+                            </div>
+                            <div class="timeline-encouragement" id="timelineEncouragement" style="display:none"></div>
+                            <div class="timeline-stats" id="timelineStats">
+                                <div class="timeline-stat">
+                                    <span class="timeline-stat-value" id="timelineElapsed">-</span>
+                                    <span class="timeline-stat-label">Elapsed</span>
+                                </div>
+                                <div class="timeline-stat">
+                                    <span class="timeline-stat-value" id="timelineOriginal">-</span>
+                                    <span class="timeline-stat-label">Original Payoff</span>
+                                </div>
+                                <div class="timeline-stat" id="timelineCurrentStat" style="display:none">
+                                    <span class="timeline-stat-value" id="timelineCurrentPace">-</span>
+                                    <span class="timeline-stat-label">Current Pace</span>
+                                </div>
+                                <div class="timeline-stat timeline-stat-extra" id="timelineExtraStat" style="display:none">
+                                    <span class="timeline-stat-value" id="timelineExtraPace">-</span>
+                                    <span class="timeline-stat-label">With Extra</span>
+                                </div>
+                                <div class="timeline-stat timeline-stat-saved" id="timelineSavedStat" style="display:none">
+                                    <span class="timeline-stat-value" id="timelineSaved">-</span>
+                                    <span class="timeline-stat-label">Time Saved</span>
+                                </div>
+                            </div>
+                            <input type="hidden" id="remainingPayments">
+                            <input type="hidden" id="remainingTerm">
+                            <input type="hidden" id="calculatedPayoffDate">
                         </div>
 
                         <button class="calculate-btn" onclick="calculate()">

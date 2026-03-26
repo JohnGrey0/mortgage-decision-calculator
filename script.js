@@ -124,6 +124,8 @@ function calculateRemainingTerm() {
             document.getElementById('remainingPayments').value = `${remainingMonths} / ${actualPayoff.monthsToPayoff} payments`;
             document.getElementById('calculatedPayoffDate').value = `${standardMaturityDate} / ${actualMaturityDate}`;
             
+            updateLoanTimeline(monthsElapsed, totalMonths, remainingMonths, startDate, formatTermCompact, actualPayoff.monthsToPayoff);
+            
             return remainingYears;
         } else {
             // Clear actual remaining months if no previous extra payments detected
@@ -136,7 +138,223 @@ function calculateRemainingTerm() {
     document.getElementById('remainingPayments').value = `${remainingMonths} payments`;
     document.getElementById('calculatedPayoffDate').value = standardMaturityDate;
     
+    updateLoanTimeline(monthsElapsed, totalMonths, remainingMonths, startDate, formatTermCompact);
+    
     return remainingYears;
+}
+
+function updateLoanTimeline(monthsElapsed, totalMonths, remainingMonths, startDate, formatTermCompact, actualRemainingMonths) {
+    const card = document.getElementById('loanTimelineCard');
+    const segElapsed = document.getElementById('segElapsed');
+    const segCurrent = document.getElementById('segCurrent');
+    const segExtra = document.getElementById('segExtra');
+    const markerCurrent = document.getElementById('markerCurrent');
+    const markerExtra = document.getElementById('markerExtra');
+    const startLabel = document.getElementById('loanStartLabel');
+    const endLabel = document.getElementById('loanEndLabel');
+    const headerEl = document.getElementById('timelineHeader');
+    const encouragement = document.getElementById('timelineEncouragement');
+    const legendCurrent = document.getElementById('legendCurrent');
+    const legendExtra = document.getElementById('legendExtra');
+    const elapsedEl = document.getElementById('timelineElapsed');
+    const originalEl = document.getElementById('timelineOriginal');
+    const currentStat = document.getElementById('timelineCurrentStat');
+    const currentPaceEl = document.getElementById('timelineCurrentPace');
+    const extraStat = document.getElementById('timelineExtraStat');
+    const extraPaceEl = document.getElementById('timelineExtraPace');
+    const savedStat = document.getElementById('timelineSavedStat');
+    const savedEl = document.getElementById('timelineSaved');
+
+    if (!segElapsed) return;
+
+    // --- Determine current-pace scenario ---
+    const aheadOfSchedule = actualRemainingMonths != null && actualRemainingMonths < remainingMonths;
+    const currentPaceTotal = aheadOfSchedule ? monthsElapsed + actualRemainingMonths : totalMonths;
+
+    // --- Determine extra-payment scenario ---
+    const remainingBalance = parseMoney(document.getElementById('remainingBalance').value);
+    const interestRate = parseFloat(document.getElementById('interestRate').value);
+    const currentPayment = parseMoney(document.getElementById('currentPayment').value);
+    const extraPrincipal = parseMoney(document.getElementById('extraPrincipal').value);
+    const annualBonus = parseMoney(document.getElementById('annualBonus').value);
+    const homeValue = parseMoney(document.getElementById('homeValue').value);
+    const monthlyPMI = parseMoney(document.getElementById('pmiPayment').value);
+
+    let extraMonthsRemaining = null;
+    let extraTotalMonths = null;
+    const hasExtra = (extraPrincipal > 0 || annualBonus > 0);
+    if (hasExtra && remainingBalance > 0 && interestRate > 0 && currentPayment > 0) {
+        const baseMonths = aheadOfSchedule ? actualRemainingMonths : remainingMonths;
+        const extraPayoff = calculateMortgagePayoff(
+            remainingBalance, interestRate, baseMonths / 12,
+            extraPrincipal, annualBonus, currentPayment, homeValue || null, monthlyPMI
+        );
+        extraMonthsRemaining = extraPayoff.monthsToPayoff;
+        extraTotalMonths = monthsElapsed + extraMonthsRemaining;
+    }
+
+    // --- Use original schedule as the full-width baseline ---
+    const barBase = totalMonths; // 100% of bar equals the original schedule
+
+    // Elapsed segment (always shown)
+    const elapsedPct = Math.min(100, Math.max(1, (monthsElapsed / barBase) * 100));
+    segElapsed.style.width = elapsedPct.toFixed(2) + '%';
+
+    // Date strings
+    const dateFmt = { month: 'short', year: 'numeric' };
+    const startStr = startDate.toLocaleDateString('en-US', dateFmt);
+    const originalEndDate = new Date(startDate.getFullYear(), startDate.getMonth() + totalMonths, 1);
+    const originalEndStr = originalEndDate.toLocaleDateString('en-US', dateFmt);
+    startLabel.textContent = startStr;
+
+    // --- Percent complete label on elapsed bar ---
+    const elapsedPctLabel = document.getElementById('elapsedPctLabel');
+    if (elapsedPctLabel) {
+        // Time-based percent
+        const timePct = Math.round(elapsedPct);
+
+        // Principal-based percent (how much of the loan balance is paid off)
+        const originalBalance = parseMoney(document.getElementById('originalBalance').value);
+        const remainBal = parseMoney(document.getElementById('remainingBalance').value);
+        let principalPct = null;
+        if (originalBalance > 0 && remainBal >= 0) {
+            principalPct = Math.round(((originalBalance - remainBal) / originalBalance) * 100);
+        }
+
+        // Show principal % if available, else time %
+        const displayPct = principalPct != null ? principalPct : timePct;
+        elapsedPctLabel.textContent = displayPct + '% paid';
+
+        // Tooltip with full breakdown
+        const tooltipLines = [];
+        if (principalPct != null) {
+            tooltipLines.push(`Principal paid: ${displayPct}% ($${(originalBalance - remainBal).toLocaleString()} of $${originalBalance.toLocaleString()})`);
+        }
+        tooltipLines.push(`Time elapsed: ${timePct}% (${monthsElapsed} of ${totalMonths} months)`);
+        elapsedPctLabel.title = tooltipLines.join('\n');
+
+        // Hide label if bar too narrow to fit it
+        elapsedPctLabel.style.display = elapsedPct < 12 ? 'none' : '';
+    }
+
+    // --- Today marker at elapsed edge ---
+    const markerToday = document.getElementById('markerToday');
+    const markerTodayDate = document.getElementById('markerTodayDate');
+    if (markerToday) {
+        markerToday.style.left = elapsedPct.toFixed(2) + '%';
+        if (markerTodayDate) {
+            const now = new Date();
+            markerTodayDate.textContent = now.toLocaleDateString('en-US', dateFmt);
+        }
+    }
+
+    // --- Current pace segment + marker ---
+    // Segments all start at left:0 and layer via z-index (elapsed on top).
+    // Each segment's width = its full extent so the top layers mask the lower ones.
+    if (aheadOfSchedule) {
+        const currentEndPct = Math.min(100, (currentPaceTotal / barBase) * 100);
+        segCurrent.style.width = currentEndPct.toFixed(2) + '%';
+        segCurrent.style.display = '';
+        markerCurrent.style.left = currentEndPct.toFixed(2) + '%';
+        markerCurrent.style.display = '';
+        legendCurrent.style.display = '';
+        currentStat.style.display = '';
+        currentPaceEl.textContent = formatTermCompact(currentPaceTotal);
+        // Show payoff date on the marker
+        const currentEndDate = new Date(new Date().getFullYear(), new Date().getMonth() + actualRemainingMonths, 1);
+        const markerCurrentDate = document.getElementById('markerCurrentDate');
+        if (markerCurrentDate) markerCurrentDate.textContent = currentEndDate.toLocaleDateString('en-US', dateFmt);
+    } else {
+        segCurrent.style.display = 'none';
+        markerCurrent.style.display = 'none';
+        legendCurrent.style.display = 'none';
+        currentStat.style.display = 'none';
+    }
+
+    // --- Extra payment segment + marker ---
+    if (extraTotalMonths != null && extraTotalMonths < (aheadOfSchedule ? currentPaceTotal : totalMonths)) {
+        const extraEndPct = Math.min(100, (extraTotalMonths / barBase) * 100);
+        segExtra.style.width = extraEndPct.toFixed(2) + '%';
+        segExtra.style.display = '';
+        markerExtra.style.left = extraEndPct.toFixed(2) + '%';
+        markerExtra.style.display = '';
+        legendExtra.style.display = '';
+        extraStat.style.display = '';
+        extraPaceEl.textContent = formatTermCompact(extraTotalMonths);
+        // Show payoff date on the marker
+        const extraEndDate = new Date(new Date().getFullYear(), new Date().getMonth() + extraMonthsRemaining, 1);
+        const markerExtraDate = document.getElementById('markerExtraDate');
+        if (markerExtraDate) markerExtraDate.textContent = extraEndDate.toLocaleDateString('en-US', dateFmt);
+    } else {
+        segExtra.style.display = 'none';
+        markerExtra.style.display = 'none';
+        legendExtra.style.display = 'none';
+        extraStat.style.display = 'none';
+    }
+
+    // --- Time saved calculation ---
+    // Best-case total is with extra payments if available, else current pace, else original
+    const bestTotal = extraTotalMonths != null && extraTotalMonths < totalMonths
+        ? extraTotalMonths
+        : (aheadOfSchedule ? currentPaceTotal : totalMonths);
+    const monthsSaved = totalMonths - bestTotal;
+
+    if (monthsSaved > 0) {
+        savedStat.style.display = '';
+        savedEl.textContent = formatTermCompact(monthsSaved);
+    } else {
+        savedStat.style.display = 'none';
+    }
+
+    // --- Stats ---
+    elapsedEl.textContent = formatTermCompact(monthsElapsed);
+    originalEl.textContent = formatTermCompact(totalMonths);
+
+    // --- End label always shows the original schedule payoff date ---
+    endLabel.textContent = originalEndStr;
+
+    // --- Header, encouragement, card class ---
+    const anyAhead = monthsSaved > 0;
+    if (anyAhead) {
+        card.classList.add('ahead-of-schedule');
+        headerEl.textContent = '📅 Loan Timeline — Ahead of Schedule 🎉';
+
+        const bestEndDate = new Date(new Date().getFullYear(), new Date().getMonth() + (bestTotal - monthsElapsed), 1);
+        const bestEndStr = bestEndDate.toLocaleDateString('en-US', dateFmt);
+
+        // Encouragement
+        const savedText = formatTermCompact(monthsSaved);
+        encouragement.style.display = 'block';
+        if (hasExtra && extraTotalMonths != null && extraTotalMonths < totalMonths) {
+            encouragement.innerHTML = `🏆 With your extra payments you'll finish <strong>${savedText}</strong> early — mortgage-free by <strong>${bestEndStr}</strong>!`;
+        } else {
+            encouragement.innerHTML = `🏆 You're <strong>${savedText}</strong> ahead of your original schedule! Keep it up and you'll be mortgage-free by <strong>${bestEndStr}</strong>.`;
+        }
+    } else {
+        card.classList.remove('ahead-of-schedule');
+        headerEl.textContent = '📅 Loan Timeline';
+        encouragement.style.display = 'none';
+    }
+
+    // --- Generate tick marks ---
+    const ticksContainer = document.getElementById('timelineTicks');
+    if (ticksContainer) {
+        ticksContainer.innerHTML = '';
+        // Choose interval: 5 years for terms > 15y, 2 years for shorter
+        const intervalYears = totalMonths > 180 ? 5 : 2;
+        const intervalMonths = intervalYears * 12;
+        for (let m = intervalMonths; m < totalMonths; m += intervalMonths) {
+            const pct = (m / totalMonths) * 100;
+            const tick = document.createElement('div');
+            tick.className = 'timeline-tick';
+            tick.style.left = pct.toFixed(2) + '%';
+            const label = document.createElement('span');
+            label.className = 'tick-label';
+            label.textContent = (m / 12) + 'y';
+            tick.appendChild(label);
+            ticksContainer.appendChild(tick);
+        }
+    }
 }
 
 // Update calculated fields to show both original and current values when previous extra payments detected
@@ -203,13 +421,20 @@ document.addEventListener('DOMContentLoaded', function() {
         calculateRemainingTerm();
     }
     
-    // Add real-time listeners for remaining balance and interest rate to trigger comparison updates
+    // Add real-time listeners for remaining balance to trigger comparison updates
     if (remainingBalance) {
         remainingBalance.addEventListener('input', calculateRemainingTerm);
     }
-    if (interestRate) {
-        interestRate.addEventListener('input', calculateRemainingTerm);
-    }
+    
+    // Wire extra payment and PMI/home value inputs to update the timeline
+    const extraPrincipalField = document.getElementById('extraPrincipal');
+    const annualBonusField = document.getElementById('annualBonus');
+    const homeValueFieldForTimeline = document.getElementById('homeValue');
+    const pmiFieldForTimeline = document.getElementById('pmiPayment');
+    if (extraPrincipalField) extraPrincipalField.addEventListener('input', calculateRemainingTerm);
+    if (annualBonusField) annualBonusField.addEventListener('input', calculateRemainingTerm);
+    if (homeValueFieldForTimeline) homeValueFieldForTimeline.addEventListener('input', calculateRemainingTerm);
+    if (pmiFieldForTimeline) pmiFieldForTimeline.addEventListener('input', calculateRemainingTerm);
     
     // Update P&I verification when relevant fields change
     const originalBalanceField = document.getElementById('originalBalance');
@@ -221,8 +446,12 @@ document.addEventListener('DOMContentLoaded', function() {
         originalBalanceField.addEventListener('input', () => {
             updatePIVerificationCard();
             calculatePMI();
+            calculateRemainingTerm();
         });
-        interestRate.addEventListener('input', updatePIVerificationCard);
+        interestRate.addEventListener('input', () => {
+            updatePIVerificationCard();
+            calculateRemainingTerm();
+        });
         originalTermField.addEventListener('input', updatePIVerificationCard);
         
         // Initial calculation (but don't show insight note until after calculations)
@@ -2197,7 +2426,7 @@ function showTooltip(type) {
         
         switch(type) {
         case 'mortgage-details':
-            title.textContent = '🏡 Mortgage Details - How Values Are Used';
+            title.textContent = '🏡 Original Loan Terms - How Values Are Used';
             content = `
                 <div class="calculation-section">
                     <h5>🏠 PMI Calculation - Why Both Values Are Needed</h5>
@@ -2253,7 +2482,7 @@ function showTooltip(type) {
                 remainingMonths = totalPayments;
             }
             
-            title.textContent = '🔢 Calculated Values - Auto-Computation Details';
+            title.textContent = '� Current Loan Status - Where You Stand Today';
             content = `
                 <div class="calculation-section">
                     <h5>⏱️ Remaining Term Calculation</h5>
@@ -2300,7 +2529,7 @@ function showTooltip(type) {
             break;
             
         case 'payment-info':
-            title.textContent = '💰 Payment Info - Extra Payment Logic';
+            title.textContent = '💰 Extra Payments - How They Accelerate Payoff';
             content = `
                 <div class="calculation-section">
                     <h5>📅 Monthly Overpayment Processing</h5>
