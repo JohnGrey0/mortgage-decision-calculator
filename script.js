@@ -1547,118 +1547,136 @@ function createBalanceChart(standard, accelerated) {
         }
     }
     
+    // Group indices for highlight-on-hover: Current=0-2, Extra=3-5, Original=6-8
+    const groupOf = (idx) => idx < 3 ? 'current' : idx < 6 ? 'extra' : 'original';
+    
+    // Colors shared across groups for each metric type
+    const balanceColor = '#ef4444';
+    const equityColor = '#8b5cf6';
+    const interestColor = '#f59e0b';
+    const origGrey = isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.35)';
+    
     balanceChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: dateLabels,
             datasets: [
-                // ── Standard Payment group ──
+                // ── Current Pace (dashed, muted) ──
                 {
-                    label: '🏡 Current - Balance',
+                    label: 'Balance',
                     data: standardBalanceData,
-                    borderColor: '#ef4444',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    borderWidth: 3,
+                    borderColor: balanceColor,
+                    backgroundColor: 'rgba(239, 68, 68, 0.03)',
+                    borderWidth: 1.5,
                     fill: true,
                     tension: 0.4,
                     pointRadius: 0,
-                    yAxisID: 'y'
+                    borderDash: [6, 4],
+                    yAxisID: 'y',
+                    group: 'current'
                 },
                 {
-                    label: '💰 Current - Equity',
+                    label: 'Equity',
                     data: standardEquity,
-                    borderColor: '#8b5cf6',
-                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                    borderWidth: 2,
+                    borderColor: equityColor,
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5,
                     fill: false,
                     tension: 0.4,
                     pointRadius: 0,
-                    borderDash: [3, 3],
-                    yAxisID: 'y'
+                    borderDash: [6, 4],
+                    yAxisID: 'y',
+                    group: 'current'
                 },
                 {
-                    label: '📊 Current - Interest Paid',
+                    label: 'Interest Paid',
                     data: standardInterestData,
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                    borderWidth: 2,
+                    borderColor: interestColor,
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5,
                     fill: false,
                     tension: 0.4,
                     pointRadius: 0,
-                    yAxisID: 'y1'
+                    borderDash: [6, 4],
+                    yAxisID: 'y1',
+                    group: 'current'
                 },
-                // ── Extra Payment group ──
+                // ── With Extra Payments (solid, bold) ──
                 {
-                    label: '⚡ Extra - Balance',
+                    label: 'Balance',
                     data: acceleratedBalanceData,
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderColor: balanceColor,
+                    backgroundColor: 'rgba(239, 68, 68, 0.06)',
                     borderWidth: 3,
                     fill: true,
                     tension: 0.4,
                     pointRadius: 0,
-                    yAxisID: 'y'
+                    yAxisID: 'y',
+                    group: 'extra'
                 },
                 {
-                    label: '💎 Extra - Equity',
+                    label: 'Equity',
                     data: acceleratedEquity,
-                    borderColor: '#06b6d4',
-                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
-                    borderWidth: 2,
+                    borderColor: equityColor,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2.5,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    yAxisID: 'y',
+                    group: 'extra'
+                },
+                {
+                    label: 'Interest Paid',
+                    data: acceleratedInterestData,
+                    borderColor: interestColor,
+                    backgroundColor: 'transparent',
+                    borderWidth: 2.5,
+                    fill: false,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    yAxisID: 'y1',
+                    group: 'extra'
+                },
+                // ── Original Schedule (dotted grey, only if historical) ──
+                ...(hasOriginalLine ? [{
+                    label: 'Balance',
+                    data: originalBalanceData,
+                    borderColor: origGrey,
+                    backgroundColor: 'transparent',
+                    borderWidth: 1.5,
                     fill: false,
                     tension: 0.4,
                     pointRadius: 0,
                     borderDash: [3, 3],
-                    yAxisID: 'y'
+                    yAxisID: 'y',
+                    group: 'original'
                 },
                 {
-                    label: '📈 Extra - Interest Paid',
-                    data: acceleratedInterestData,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    borderDash: [5, 5],
-                    yAxisID: 'y1'
-                },
-                // ── Original amortization shadow (only if historical data available) ──
-                ...(hasOriginalLine ? [{
-                    label: '👻 Original Schedule',
-                    data: originalBalanceData,
-                    borderColor: isDark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(100, 116, 139, 0.3)',
-                    backgroundColor: 'transparent',
-                    borderWidth: 2,
-                    fill: false,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    borderDash: [8, 4],
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Original - Equity',
+                    label: 'Equity',
                     data: originalEquityData,
-                    borderColor: isDark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(100, 116, 139, 0.3)',
+                    borderColor: origGrey,
                     backgroundColor: 'transparent',
                     borderWidth: 1.5,
                     fill: false,
                     tension: 0.4,
                     pointRadius: 0,
-                    borderDash: [8, 4],
-                    yAxisID: 'y'
+                    borderDash: [3, 3],
+                    yAxisID: 'y',
+                    group: 'original'
                 },
                 {
-                    label: 'Original - Interest',
+                    label: 'Interest',
                     data: originalInterestData,
-                    borderColor: isDark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(100, 116, 139, 0.3)',
+                    borderColor: origGrey,
                     backgroundColor: 'transparent',
                     borderWidth: 1.5,
                     fill: false,
                     tension: 0.4,
                     pointRadius: 0,
-                    borderDash: [8, 4],
-                    yAxisID: 'y1'
+                    borderDash: [3, 3],
+                    yAxisID: 'y1',
+                    group: 'original'
                 }] : [])
             ]
         },
@@ -1671,12 +1689,7 @@ function createBalanceChart(standard, accelerated) {
             },
             plugins: {
                 legend: {
-                    position: 'top',
-                    labels: {
-                        color: textColor,
-                        usePointStyle: true,
-                        padding: 20
-                    }
+                    display: false // replaced by custom HTML legend
                 },
                 tooltip: {
                     backgroundColor: isDark ? '#334155' : '#ffffff',
@@ -1686,10 +1699,11 @@ function createBalanceChart(standard, accelerated) {
                     borderWidth: 1,
                     callbacks: {
                         label: function(context) {
-                            return ' ' + context.dataset.label + ': ' + formatCurrency(context.parsed.y);
+                            const groupNames = { current: 'Current', extra: 'Extra', original: 'Original' };
+                            const gName = groupNames[context.dataset.group] || '';
+                            return ' ' + gName + ' - ' + context.dataset.label + ': ' + formatCurrency(context.parsed.y);
                         },
                         afterLabel: function(context) {
-                            // Separator between Current group (0-2), Extra group (3-5), and Original (6)
                             if (context.datasetIndex === 2 || (context.datasetIndex === 5 && hasOriginalLine)) {
                                 return '  ─────────────────';
                             }
@@ -1710,28 +1724,18 @@ function createBalanceChart(standard, accelerated) {
                         autoSkip: false,
                         maxRotation: 0,
                         callback: function(value, index) {
-                            // Show labels at clean year boundaries
                             const label = dateLabels[index];
-                            if (!label) return '';
-                            const isJan = label.startsWith('Jan');
-                            if (!isJan) return '';
-                            // Pick year interval based on term length
-                            const totalYears = Math.ceil(dateLabels.length / 12);
-                            const yearInterval = totalYears > 20 ? 5 : totalYears > 10 ? 2 : 1;
-                            const year = parseInt(label.split(' ')[1]);
-                            return year % yearInterval === 0 ? year.toString() : '';
+                            if (!label || !label.startsWith('Jan')) return '';
+                            return parseInt(label.split(' ')[1]).toString();
                         }
                     },
                     grid: {
                         color: function(context) {
-                            // Only show grid lines at labeled year ticks
+                            // Only show grid lines at year ticks
                             const index = context.tick?.value;
                             const label = dateLabels[index];
                             if (!label || !label.startsWith('Jan')) return 'transparent';
-                            const totalYears = Math.ceil(dateLabels.length / 12);
-                            const yearInterval = totalYears > 20 ? 5 : totalYears > 10 ? 2 : 1;
-                            const year = parseInt(label.split(' ')[1]);
-                            return year % yearInterval === 0 ? gridColor : 'transparent';
+                            return gridColor;
                         }
                     }
                 },
@@ -1807,6 +1811,84 @@ function createBalanceChart(standard, accelerated) {
             }
         }]
     });
+    
+    // ── Build custom grouped legend with hover-to-highlight ──
+    const legendEl = document.getElementById('amortLegend');
+    if (legendEl) {
+        const groups = [
+            { key: 'current', title: 'Current Pace', style: 'dashed', indices: [0, 1, 2] },
+            { key: 'extra', title: 'With Extra', style: 'solid', indices: [3, 4, 5] }
+        ];
+        if (hasOriginalLine) {
+            groups.push({ key: 'original', title: 'Original Schedule', style: 'dotted', indices: [6, 7, 8] });
+        }
+        const colors = [balanceColor, equityColor, interestColor];
+        const metricLabels = ['Balance', 'Equity', 'Interest Paid'];
+        
+        let html = '<div class="legend-groups">';
+        groups.forEach(g => {
+            html += `<div class="legend-group" data-group="${g.key}">`;
+            html += `<div class="legend-group-title">${g.title}</div>`;
+            html += '<div class="legend-group-items">';
+            g.indices.forEach((dsIdx, i) => {
+                if (dsIdx >= balanceChart.data.datasets.length) return;
+                const c = g.key === 'original' ? (document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(148,163,184,0.5)' : 'rgba(100,116,139,0.45)') : colors[i];
+                const dashStyle = g.style === 'dashed' ? 'border-style:dashed;' : g.style === 'dotted' ? 'border-style:dotted;' : '';
+                html += `<span class="legend-item" data-ds="${dsIdx}" data-group="${g.key}">`;
+                html += `<span class="legend-swatch" style="background:transparent;border:2px solid ${c};${dashStyle}"></span>`;
+                html += `${metricLabels[i]}</span>`;
+            });
+            html += '</div></div>';
+        });
+        html += '</div>';
+        legendEl.innerHTML = html;
+        
+        // Store original styles for restore
+        const origStyles = balanceChart.data.datasets.map(ds => ({
+            borderColor: ds.borderColor,
+            backgroundColor: ds.backgroundColor,
+            borderWidth: ds.borderWidth
+        }));
+        
+        const highlightGroup = (groupKey) => {
+            balanceChart.data.datasets.forEach((ds, i) => {
+                if (ds.group === groupKey) {
+                    ds.borderColor = origStyles[i].borderColor;
+                    ds.backgroundColor = origStyles[i].backgroundColor;
+                    ds.borderWidth = origStyles[i].borderWidth;
+                } else {
+                    // Dim non-highlighted lines
+                    ds.borderColor = document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(148,163,184,0.1)' : 'rgba(148,163,184,0.15)';
+                    ds.backgroundColor = 'transparent';
+                    ds.borderWidth = 1;
+                }
+            });
+            balanceChart.update('none');
+        };
+        
+        const restoreAll = () => {
+            balanceChart.data.datasets.forEach((ds, i) => {
+                ds.borderColor = origStyles[i].borderColor;
+                ds.backgroundColor = origStyles[i].backgroundColor;
+                ds.borderWidth = origStyles[i].borderWidth;
+            });
+            balanceChart.update('none');
+        };
+        
+        legendEl.querySelectorAll('.legend-group').forEach(groupEl => {
+            groupEl.addEventListener('mouseenter', () => {
+                const gk = groupEl.dataset.group;
+                highlightGroup(gk);
+                legendEl.querySelectorAll('.legend-group').forEach(el => {
+                    el.classList.toggle('dimmed', el.dataset.group !== gk);
+                });
+            });
+            groupEl.addEventListener('mouseleave', () => {
+                restoreAll();
+                legendEl.querySelectorAll('.legend-group').forEach(el => el.classList.remove('dimmed'));
+            });
+        });
+    }
 }
 
 function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, average, strong, hybridPhase2) {
@@ -1975,10 +2057,7 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
                         callback: function(value, index) {
                             const label = dateLabels[index];
                             if (!label || !label.startsWith('Jan')) return '';
-                            const totalYears = Math.ceil(dateLabels.length / 12);
-                            const yearInterval = totalYears > 20 ? 5 : totalYears > 10 ? 2 : 1;
-                            const year = parseInt(label.split(' ')[1]);
-                            return year % yearInterval === 0 ? year.toString() : '';
+                            return parseInt(label.split(' ')[1]).toString();
                         }
                     },
                     grid: {
@@ -1986,10 +2065,7 @@ function createCombinedStrategyChart(acceleratedPayoff, standardPayoff, weak, av
                             const index = context.tick?.value;
                             const label = dateLabels[index];
                             if (!label || !label.startsWith('Jan')) return 'transparent';
-                            const totalYears = Math.ceil(dateLabels.length / 12);
-                            const yearInterval = totalYears > 20 ? 5 : totalYears > 10 ? 2 : 1;
-                            const year = parseInt(label.split(' ')[1]);
-                            return year % yearInterval === 0 ? gridColor : 'transparent';
+                            return gridColor;
                         }
                     }
                 },
